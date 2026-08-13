@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema - El Amazonas</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Firebase SDK (Compat o Modular según requieras) -->
+    <script type="module">
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+      const firebaseConfig = {
+        apiKey: "AIzaSyAnyZuw9S4MM1I4-njqjkyluRiw6i2uIvM",
+        authDomain: "el-as-1d1ef.firebaseapp.com",
+        projectId: "el-as-1d1ef",
+        storageBucket: "el-as-1d1ef.firebasestorage.app",
+        messagingSenderId: "359834958109",
+        appId: "1:359834958109:web:6d04605c68d087bedbc9f4",
+        measurementId: "G-0WQD329BYK"
+      };
+    </script>
+
+    <style>
+        @media print {
+            @page { margin: 0; }
+            body { margin: 0.5cm; }
+            body * { visibility: hidden !important; }
+            #area-impresion-factura, #area-impresion-factura * { visibility: visible !important; }
+            #area-impresion-factura {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 80mm !important;
+                padding: 5px !important;
+                font-family: 'Courier New', Courier, monospace !important;
+                color: #000 !important;
+                background: #fff !important;
+                display: block !important;
+            }
+        }
+        @keyframes bounce-short {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .animar-alerta {
+            animation: bounce-short 0.6s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 flex flex-col">
+
+    <!-- ================= 1. PANTALLA DE ACCESO (LOGIN / REGISTRO) ================= -->
+    <div id="pantalla-acceso" class="fixed inset-0 bg-emerald-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-6">
+            <div class="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto text-emerald-600 text-3xl">
+                <i class="fa-solid fa-tree"></i>
+            </div>
+            
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">El Amazonas</h1>
+                <p id="subtitulo-auth" class="text-sm text-gray-500 mt-1">Inicie sesión con su usuario y contraseña</p>
+            </div>
+
+            <!-- FORMULARIO DE LOGIN -->
+            <form id="form-login" onsubmit="procesarLogin(event)" class="space-y-4 text-left">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Usuario</label>
+                    <input type="text" id="login-usuario" required placeholder="Ej: omi" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Contraseña</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:border-emerald-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Entrar al Sistema
+                </button>
+                <div class="text-center pt-2">
+                    <button type="button" onclick="cambiarVistaAuth('registro')" class="text-xs font-bold text-emerald-700 hover:underline">
+                        ¿No tienes cuenta? Regístrate aquí
+                    </button>
+                </div>
+            </form>
+
+            <!-- FORMULARIO DE REGISTRO DE USUARIO NUEVO -->
+            <form id="form-registro" onsubmit="procesarRegistro(event)" class="space-y-4 text-left hidden">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nombre Completo o Usuario</label>
+                    <input type="text" id="reg-usuario" required placeholder="Ej: Omi Colón" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Contraseña</label>
+                    <input type="password" id="reg-password" required placeholder="••••••••" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:border-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Asignar Rol de Trabajo</label>
+                    <select id="reg-rol" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm bg-white focus:border-emerald-500 focus:outline-none font-bold text-emerald-800">
+                        <option value="caja">💵 Caja / Salón (Principal)</option>
+                        <option value="cocina">🍳 Cocina (Área de Preparación)</option>
+                        <option value="admin">👑 Administrador Total</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> Crear Cuenta y Registrarse
+                </button>
+                <div class="text-center pt-2">
+                    <button type="button" onclick="cambiarVistaAuth('login')" class="text-xs font-bold text-emerald-700 hover:underline">
+                        ¿Ya tienes cuenta? Inicia sesión
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= NOTIFICACIÓN FLOTANTE PARA CAJA (PEDIDO LISTO) ================= -->
+    <div id="toast-caja-alerta" class="fixed top-20 right-4 z-50 hidden bg-amber-500 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border-2 border-white animar-alerta">
+        <i class="fa-solid fa-bell text-2xl"></i>
+        <div>
+            <h4 class="font-black text-sm">¡ATENCIÓN CAJA!</h4>
+            <p id="toast-caja-texto" class="text-xs font-medium">Un pedido de cocina está listo para despachar.</p>
+        </div>
+        <button onclick="cerrarToastCaja()" class="ml-3 text-white hover:text-gray-200 text-lg font-bold px-2">×</button>
+    </div>
+
+    <!-- ================= APP PRINCIPAL ================= -->
+    <div id="app-principal" class="hidden flex-col min-h-screen">
+        
+        <!-- Encabezado -->
+        <header class="bg-emerald-800 text-white shadow-md sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMenu()" class="text-white hover:text-emerald-200 focus:outline-none text-2xl p-1">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-tree text-emerald-300 text-xl"></i>
+                        <h1 class="font-extrabold text-lg sm:text-xl">El Amazonas</h1>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 text-xs sm:text-sm">
+                    <span id="header-badge-rol" class="bg-amber-500 text-white px-2.5 py-1 rounded-full font-bold uppercase text-[10px]">Rol</span>
+                    <span class="bg-emerald-950/50 px-3 py-1.5 rounded-full font-semibold border border-emerald-700/50">
+                        <i class="fa-solid fa-user-circle text-emerald-400"></i> <span id="display-cajero-nombre">Operador</span>
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- MENÚ LATERAL DESPLEGABLE -->
+        <div id="menu-overlay" onclick="toggleMenu()" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity"></div>
+        
+        <aside id="menu-lateral" class="fixed top-0 left-0 w-72 h-full bg-emerald-900 text-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl flex flex-col justify-between">
+            <div>
+                <div class="p-5 border-b border-emerald-700 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-tree text-emerald-400 text-2xl"></i>
+                        <span class="font-bold text-lg">El Amazonas</span>
+                    </div>
+                    <button onclick="toggleMenu()" class="text-emerald-300 hover:text-white text-xl">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <nav id="menu-nav-links" class="p-4 space-y-2">
+                    <!-- Los enlaces cambian según el rol -->
+                </nav>
+            </div>
+
+            <div class="p-4 border-t border-emerald-800">
+                <button onclick="cerrarTurno()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- Contenido -->
+        <main class="max-w-7xl mx-auto p-4 flex-grow w-full space-y-6">
+
+            <!-- PESTAÑA COCINA (MONITOR DE PEDIDOS) -->
+            <section id="section-cocina" class="hidden space-y-4">
+                <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow border-l-4 border-amber-500">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800"><i class="fa-solid fa-fire-burner text-amber-600"></i> Monitor de Cocina en Vivo</h2>
+                        <p class="text-xs text-gray-500">Aquí entran en tiempo real todos los pedidos de mesas, ventas rápidas y deliveries.</p>
+                    </div>
+                    <span id="cocina-contador-pendientes" class="bg-amber-100 text-amber-800 font-black px-3 py-1 rounded-xl text-sm">0 pendientes</span>
+                </div>
+                <div id="grid-cocina-pedidos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </section>
+
+            <!-- PESTAÑA MESAS -->
+            <section id="section-mesas" class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-gray-700">Mesas Activas</h2>
+                    <button onclick="promptCrearMesa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-plus"></i> Abrir Mesa
+                    </button>
+                </div>
+                <div id="grid-mesas" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+            </section>
+
+            <!-- PESTAÑA PRODUCTOS -->
+            <section id="section-productos" class="hidden space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-700">Catálogo de Productos</h2>
+                        <p class="text-xs text-gray-400">Toca cualquier producto para editar sus datos/precio</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="abrirModalProducto()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 shadow flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Añadir Producto
+                        </button>
+                        <button onclick="abrirModalQuitarProducto()" class="bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-700 shadow flex items-center gap-2">
+                            <i class="fa-solid fa-minus"></i> Quitar Producto
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow overflow-hidden">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="p-3">Imagen</th>
+                                <th class="p-3">Nombre</th>
+                                <th class="p-3">Categoría</th>
+                                <th class="p-3 text-right">Precio</th>
+                                <th class="p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-productos" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- PESTAÑA DELIVERIES -->
+            <section id="section-deliveries" class="hidden space-y-4">
+                <h2 class="text-lg font-bold text-gray-700">Control de Deliveries (Pedidos a Domicilio)</h2>
+                <div id="grid-deliveries" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </section>
+
+            <!-- PESTAÑA CAJA -->
+            <section id="section-caja" class="hidden space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <h2 class="text-lg font-bold text-gray-700">Resumen de Ventas y Cierre de Caja</h2>
+                    <button onclick="finalizarDia()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl shadow text-sm flex items-center gap-2 transition">
+                        <i class="fa-solid fa-file-arrow-down"></i> Finalizar Día (Cierre de Caja)
+                    </button>
+                </div>
+
+                <!-- BLOQUE DE DINERO INICIAL Y GASTOS DE CAJA -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- Dinero Inicial -->
+                    <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-amber-500 space-y-3">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Dinero Inicial en Caja (Fondo)</p>
+                        <div class="flex gap-2">
+                            <input type="number" step="0.01" id="input-dinero-inicial" placeholder="0.00" class="w-full p-2.5 border-2 rounded-xl text-sm font-bold focus:border-amber-500 focus:outline-none">
+                            <button onclick="guardarDineroInicial()" class="bg-amber-50 hover:bg-amber-600 text-white font-bold px-4 rounded-xl text-xs shadow transition">Fijar</button>
+                        </div>
+                        <p class="text-[11px] text-gray-500">Monto base registrado: <strong id="display-dinero-inicial" class="text-gray-800">$0.00</strong></p>
+                    </div>
+
+                    <!-- Registrar Gasto de Caja -->
+                    <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-purple-500 lg:col-span-2 space-y-3">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Añadir Gasto / Retiro de Caja</p>
+                        <form onsubmit="registrarGastoCaja(event)" class="flex flex-wrap sm:flex-nowrap gap-2">
+                            <input type="number" step="0.01" id="gasto-monto" placeholder="Monto ($)" required class="w-full sm:w-36 p-2.5 border-2 rounded-xl text-sm font-bold focus:border-purple-500 focus:outline-none">
+                            <input type="text" id="gasto-comentario" placeholder="Comentario (Ej: Compra de hielo, gas...)" required class="w-full p-2.5 border-2 rounded-xl text-sm focus:border-purple-500 focus:outline-none flex-grow">
+                            <button type="submit" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+                                <i class="fa-solid fa-minus-circle"></i> Registrar Gasto
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-emerald-500">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Total Ventas de Hoy</p>
+                        <p id="caja-total" class="text-2xl font-black text-gray-800 mt-1">$0.00</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-purple-500">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Total Gastos de Caja</p>
+                        <p id="caja-total-gastos" class="text-2xl font-black text-purple-600 mt-1">$0.00</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow border-l-4 border-blue-500">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Efectivo Total en Caja</p>
+                        <p id="caja-efectivo-neto" class="text-2xl font-black text-emerald-600 mt-1">$0.00</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow p-4 space-y-3">
+                    <h3 class="font-bold border-b pb-2 text-gray-800">Historial Detallado de Ventas y Gastos Registrados</h3>
+                    <div id="historial-ventas" class="space-y-3 max-h-[400px] overflow-y-auto"></div>
+                </div>
+            </section>
+
+            <!-- PESTAÑA ADMINISTRACIÓN DE USUARIOS Y ARCHIVO HISTÓRICO (SOLO ADMIN) -->
+            <section id="section-usuarios" class="hidden space-y-6">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-700"><i class="fa-solid fa-users-gear text-emerald-600"></i> Administración de Usuarios</h2>
+                        <p class="text-xs text-gray-400">Gestione los permisos, roles, cree o elimine cuentas de acceso al sistema</p>
+                    </div>
+                    <button onclick="abrirModalUsuarioAdmin()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 shadow flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus"></i> Nuevo Usuario
+                    </button>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow overflow-hidden">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-gray-50 border-b text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="p-3">Usuario / Nombre</th>
+                                <th class="p-3">Contraseña</th>
+                                <th class="p-3">Rol Asignado</th>
+                                <th class="p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-usuarios-admin" class="divide-y"></tbody>
+                    </table>
+                </div>
+
+                <!-- ARCHIVO HISTÓRICO DE CIERRES (SOLO ADMIN) -->
+                <div class="bg-white rounded-2xl shadow p-5 space-y-4 border-t-4 border-amber-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-md font-bold text-gray-800"><i class="fa-solid fa-vault text-amber-600"></i> Archivo Histórico de Cierres de Día</h3>
+                            <p class="text-xs text-gray-500">Información guardada de jornadas anteriores. Acceso exclusivo para administradores.</p>
+                        </div>
+                        <button onclick="limpiarArchivoHistorico()" class="text-xs text-red-600 hover:underline font-bold">Limpiar Historial</button>
+                    </div>
+                    <div id="contenedor-archivo-historico" class="space-y-3 max-h-[350px] overflow-y-auto">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ================= MODAL VENTA RÁPIDA / MESA ================= -->
+    <div id="modal-pedido" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 id="modal-titulo" class="text-xl font-bold">Detalle de Pedido</h3>
+                <button onclick="cerrarModal('modal-pedido')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="bg-gray-50 p-3 rounded-xl border space-y-2 relative">
+                <p class="text-xs font-bold text-gray-500 uppercase">Buscar y Agregar Producto</p>
+                <div class="flex gap-2">
+                    <div class="relative flex-grow">
+                        <input type="text" id="input-buscar-prod" oninput="filtrarProductosModal()" placeholder="🔍 Escribe el nombre o categoría..." class="w-full p-2 pl-3 border rounded-xl text-sm bg-white focus:outline-none focus:border-emerald-500">
+                        <div id="lista-busqueda-prods" class="absolute left-0 right-0 top-full mt-1 bg-white border rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 hidden divide-y"></div>
+                    </div>
+                    <input id="input-cant" type="number" min="1" value="1" class="w-16 p-2 border rounded-xl text-sm text-center font-bold" title="Cantidad">
+                </div>
+            </div>
+
+            <div class="flex-grow overflow-y-auto border rounded-xl p-2 min-h-[150px]">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-gray-400 border-b">
+                        <tr>
+                            <th>Foto</th>
+                            <th>Cant.</th>
+                            <th>Producto</th>
+                            <th class="text-right">Precio</th>
+                            <th class="text-right">Total</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-items-pedido"></tbody>
+                </table>
+            </div>
+
+            <div class="border-t pt-3 flex flex-wrap justify-between items-center gap-3">
+                <div>
+                    <span class="text-xs text-gray-500">Monto Total:</span>
+                    <p id="modal-monto-total" class="text-2xl font-black text-emerald-600">$0.00</p>
+                </div>
+                <div class="flex gap-2 flex-wrap sm:flex-nowrap">
+                    <button onclick="enviarADelivery()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold shadow text-xs flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-motorcycle"></i> A Delivery
+                    </button>
+                    <button id="btn-enviar-cocina" onclick="enviarComidaACocina()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-bold shadow text-xs flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-fire-burner"></i> Enviar a Cocina
+                    </button>
+                    <button id="btn-cobrar" onclick="solicitarCobroConImpresion()" class="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold shadow text-xs hover:bg-emerald-700 transition">
+                        <i class="fa-solid fa-cash-register"></i> Cobrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMAR IMPRESIÓN Y CÁLCULO DE VUELTO/DEVOLUCIÓN -->
+    <div id="modal-confirmar-impresion" class="fixed inset-0 bg-black/60 z-[70] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-5 shadow-2xl">
+            <div class="bg-emerald-100 text-emerald-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-cash-register"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-gray-900">Cobro y Vuelto</h3>
+                <p id="modal-cobro-total-texto" class="text-xs text-gray-500 mt-1">Total a Pagar: <strong>$0.00</strong></p>
+            </div>
+
+            <!-- Entrada de con cuánto paga -->
+            <div class="space-y-2 text-left bg-gray-50 p-3 rounded-2xl border">
+                <label class="block text-xs font-bold text-gray-600 uppercase">¿Con cuánto paga el cliente?</label>
+                <input type="number" step="0.01" id="input-monto-paga" oninput="calcularVueltoDevolucion()" placeholder="0.00" class="w-full p-2.5 border-2 rounded-xl text-sm font-bold focus:border-emerald-500 focus:outline-none">
+                <div class="flex justify-between items-center pt-1 text-sm">
+                    <span class="text-xs font-bold text-gray-500 uppercase">A devolver (Vuelto):</span>
+                    <span id="display-vuelto-monto" class="font-black text-emerald-600 text-lg">$0.00</span>
+                </div>
+            </div>
+
+            <p class="text-xs font-medium text-gray-600">¿Desea imprimir factura en impresora térmica?</p>
+            <div class="flex gap-3">
+                <button onclick="confirmarCobroFinal(false)" class="w-1/2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded-2xl text-sm transition flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-xmark"></i> NO
+                </button>
+                <button onclick="confirmarCobroFinal(true)" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-sm shadow-lg transition flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-check"></i> SÍ (Imprimir)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CAMBIAR PRODUCTO DEL PEDIDO -->
+    <div id="modal-editar-item" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="text-md font-bold text-gray-800">Sustituir Producto</h3>
+                <button onclick="cerrarModal('modal-editar-item')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="text-xs text-gray-500">Seleccione el nuevo producto para reemplazar el elemento actual:</p>
+            <select id="select-nuevo-producto" class="w-full p-2.5 border rounded-xl text-sm bg-gray-50 focus:outline-none focus:border-emerald-500 font-medium"></select>
+            <div class="flex justify-end gap-2 border-t pt-3">
+                <button onclick="cerrarModal('modal-editar-item')" class="px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Cancelar</button>
+                <button onclick="confirmarCambioProducto()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold rounded-xl shadow">Guardar Cambio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO / EDITAR PRODUCTO -->
+    <div id="modal-producto" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <h3 id="modal-producto-titulo" class="text-lg font-bold border-b pb-2">Crear Producto</h3>
+            <form onsubmit="guardarProducto(event)" class="space-y-3">
+                <input type="hidden" id="prod-id-editar">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nombre del Producto</label>
+                    <input type="text" id="prod-nombre" placeholder="Nombre (Ej: Refresco Cola)" required class="w-full p-2 border rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Categoría</label>
+                    <input type="text" id="prod-categoria" placeholder="Categoría (Ej: Bebidas)" required class="w-full p-2 border rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Precio ($)</label>
+                    <input type="number" step="0.01" id="prod-precio" placeholder="Precio ($)" required class="w-full p-2 border rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Foto del Producto</label>
+                    <input type="file" id="prod-archivo-foto" accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+                </div>
+                <div class="flex justify-end gap-2 border-t pt-3">
+                    <button type="button" onclick="cerrarModal('modal-producto')" class="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL QUITAR PRODUCTO -->
+    <div id="modal-quitar-producto" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="text-lg font-bold text-gray-800">Quitar Producto del Catálogo</h3>
+                <button onclick="cerrarModal('modal-quitar-producto')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-gray-500">Seleccione el producto que desea eliminar del menú:</p>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Producto a eliminar</label>
+                <select id="select-quitar-producto" class="w-full p-2.5 border rounded-xl text-sm bg-gray-50 focus:outline-none focus:border-red-500 font-medium"></select>
+            </div>
+            <div class="flex justify-end gap-2 border-t pt-3">
+                <button type="button" onclick="cerrarModal('modal-quitar-producto')" class="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl">Cancelar</button>
+                <button type="button" onclick="confirmarQuitarProductoModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO / EDITAR USUARIO (ADMIN) -->
+    <div id="modal-usuario-admin" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-xl">
+            <h3 id="modal-usuario-titulo" class="text-lg font-bold border-b pb-2">Gestionar Usuario</h3>
+            <form onsubmit="guardarUsuarioAdmin(event)" class="space-y-3">
+                <input type="hidden" id="usuario-idx-editar">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nombre de Usuario</label>
+                    <input type="text" id="admin-user-nombre" placeholder="Ej: Omeli" required class="w-full p-2 border rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Contraseña</label>
+                    <input type="text" id="admin-user-pass" placeholder="Ej: 1998" required class="w-full p-2 border rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Rol de Trabajo</label>
+                    <select id="admin-user-rol" class="w-full p-2.5 border rounded-xl text-sm bg-white font-bold text-emerald-800">
+                        <option value="caja">💵 Caja / Salón (Principal)</option>
+                        <option value="cocina">🍳 Cocina (Área de Preparación)</option>
+                        <option value="admin">👑 Administrador Total</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 border-t pt-3">
+                    <button type="button" onclick="cerrarModal('modal-usuario-admin')" class="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow">Guardar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR OCULTO PARA IMPRESIÓN TÉRMICA -->
+    <div id="area-impresion-factura" class="hidden"></div>
+
+    <!-- SCRIPT DE CONTROL Y LÓGICA DE NEGOCIO -->
+    <script>
+        let cajeroActual = localStorage.getItem('amazonas_cajero') || '';
+        let rolActual = localStorage.getItem('amazonas_rol') || 'caja';
+        const IMAGEN_DEFECTO = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=60';
+
+        let appData = {
+            usuarios: JSON.parse(localStorage.getItem('amazonas_usuarios')) || [],
+            productos: JSON.parse(localStorage.getItem('amazonas_prods')) || [
+                { id: 1, nombre: 'Refresco Cola', categoria: 'Bebidas', precio: 50, imagen: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=100&auto=format&fit=crop&q=60' },
+                { id: 2, nombre: 'Cerveza Fría', categoria: 'Bebidas', precio: 150, imagen: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=100&auto=format&fit=crop&q=60' },
+                { id: 3, nombre: 'Empanada', categoria: 'Comidas', precio: 60, imagen: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=100&auto=format&fit=crop&q=60' }
+            ],
+            mesas: JSON.parse(localStorage.getItem('amazonas_mesas')) || [],
+            deliveries: JSON.parse(localStorage.getItem('amazonas_deliveries')) || [],
+            ventas: JSON.parse(localStorage.getItem('amazonas_ventas')) || [],
+            gastosCaja: JSON.parse(localStorage.getItem('amazonas_gastos_caja')) || [],
+            dineroInicial: parseFloat(localStorage.getItem('amazonas_dinero_inicial')) || 0,
+            pedidosCocina: JSON.parse(localStorage.getItem('amazonas_cocina')) || [],
+            archivoHistorico: JSON.parse(localStorage.getItem('amazonas_archivo_historico')) || []
+        };
+
+        const adminPorDefecto = { usuario: 'Omeli', password: '1998', rol: 'admin' };
+        if (!appData.usuarios.some(u => u.usuario.toLowerCase() === 'omeli')) {
+            appData.usuarios.push(adminPorDefecto);
+        }
+
+        if (!localStorage.getItem('amazonas_prods')) {
+            localStorage.setItem('amazonas_prods', JSON.stringify(appData.productos));
+        }
+        localStorage.setItem('amazonas_usuarios', JSON.stringify(appData.usuarios));
+
+        let pedidoTemporal = { esVentaRapida: false, mesaId: null, items: [], comidaEnviadaACocina: [] };
+        let deliveryACobrar = null;
+        let itemIndexAEditar = null;
+        let globalInterval = null;
+        
+        let ultimoConteoCocina = appData.pedidosCocina.length;
+        let ultimaListaCocinaJSON = JSON.stringify(appData.pedidosCocina);
+
+        if (cajeroActual) {
+            iniciarPantallaPrincipal();
+        }
+
+        function cambiarVistaAuth(vista) {
+            const formLogin = document.getElementById('form-login');
+            const formRegistro = document.getElementById('form-registro');
+            const subtitulo = document.getElementById('subtitulo-auth');
+
+            if (vista === 'registro') {
+                formLogin.classList.add('hidden');
+                formRegistro.classList.remove('hidden');
+                subtitulo.innerText = 'Cree su cuenta y asigne su rol';
+            } else {
+                formRegistro.classList.add('hidden');
+                formLogin.classList.remove('hidden');
+                subtitulo.innerText = 'Inicie sesión con su usuario y contraseña';
+            }
+        }
+
+        function procesarRegistro(e) {
+            e.preventDefault();
+            const usuarioInput = document.getElementById('reg-usuario').value.trim();
+            const passwordInput = document.getElementById('reg-password').value.trim();
+            const rolInput = document.getElementById('reg-rol').value;
+
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || [];
+
+            const existente = appData.usuarios.find(u => u.usuario.toLowerCase() === usuarioInput.toLowerCase());
+            if (existente) {
+                alert('Este nombre de usuario ya está registrado. Por favor elija otro o inicie sesión.');
+                return;
+            }
+
+            appData.usuarios.push({
+                usuario: usuarioInput,
+                password: passwordInput,
+                rol: rolInput
+            });
+            localStorage.setItem('amazonas_usuarios', JSON.stringify(appData.usuarios));
+
+            alert('¡Cuenta creada con éxito! Ahora puede iniciar sesión con sus datos.');
+            cambiarVistaAuth('login');
+        }
+
+        function procesarLogin(e) {
+            e.preventDefault();
+            const usuarioInput = document.getElementById('login-usuario').value.trim();
+            const passwordInput = document.getElementById('login-password').value.trim();
+
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || [];
+
+            const usuarioEncontrado = appData.usuarios.find(u => 
+                u.usuario.toLowerCase() === usuarioInput.toLowerCase() && u.password === passwordInput
+            );
+
+            if (!usuarioEncontrado) {
+                alert('Usuario o contraseña incorrectos. Si no tiene cuenta, regístrese abajo.');
+                return;
+            }
+
+            cajeroActual = usuarioEncontrado.usuario;
+            rolActual = usuarioEncontrado.rol;
+            localStorage.setItem('amazonas_cajero', cajeroActual);
+            localStorage.setItem('amazonas_rol', rolActual);
+
+            iniciarPantallaPrincipal();
+        }
+
+        function reproducirSonidoAlerta(tipo = 'normal') {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (tipo === 'urgente') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(900, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                } else {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                }
+            } catch (e) {
+                console.log('Audio bloqueado por navegador hasta interacción');
+            }
+        }
+
+        function toggleMenu() {
+            const menu = document.getElementById('menu-lateral');
+            const overlay = document.getElementById('menu-overlay');
+            if (menu.classList.contains('-translate-x-full')) {
+                menu.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                menu.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function iniciarPantallaPrincipal() {
+            document.getElementById('pantalla-acceso').classList.add('hidden');
+            document.getElementById('app-principal').classList.remove('hidden');
+            document.getElementById('app-principal').classList.add('flex');
+            document.getElementById('display-cajero-nombre').innerText = cajeroActual;
+            
+            const badgeRol = document.getElementById('header-badge-rol');
+            if (rolActual === 'admin') {
+                badgeRol.innerText = '👑 Admin';
+            } else if (rolActual === 'cocina') {
+                badgeRol.innerText = '🍳 Cocina';
+            } else {
+                badgeRol.innerText = '💵 Caja / Salón';
+            }
+
+            construirMenuLateral();
+
+            if (rolActual === 'cocina') {
+                switchTab('cocina');
+            } else if (rolActual === 'admin') {
+                switchTab('usuarios');
+            } else {
+                switchTab('mesas');
+            }
+
+            renderMesas();
+            renderDeliveries();
+            renderCocina();
+            actualizarCaja();
+            
+            if (!globalInterval) {
+                globalInterval = setInterval(() => {
+                    verificarCambiosEnSegundoPlano();
+                }, 1000);
+            }
+        }
+
+        function verificarCambiosEnSegundoPlano() {
+            const cocinaAntesJSON = ultimaListaCocinaJSON;
+            recargarDatosStorage();
+            const cocinaActualJSON = JSON.stringify(appData.pedidosCocina);
+
+            if (appData.pedidosCocina.length > ultimoConteoCocina) {
+                ultimoConteoCocina = appData.pedidosCocina.length;
+                ultimaListaCocinaJSON = cocinaActualJSON;
+                if (rolActual === 'cocina') {
+                    reproducirSonidoAlerta('urgente');
+                }
+                if (rolActual === 'cocina') renderCocina();
+            } else if (appData.pedidosCocina.length < ultimoConteoCocina) {
+                ultimoConteoCocina = appData.pedidosCocina.length;
+            }
+            ultimaListaCocinaJSON = cocinaActualJSON;
+
+            if (rolActual === 'caja' || rolActual === 'admin') {
+                const parsedAntes = JSON.parse(cocinaAntesJSON);
+                const parsedAhora = appData.pedidosCocina;
+
+                parsedAhora.forEach(nuevoP => {
+                    const antiguoP = parsedAntes.find(p => p.id === nuevoP.id);
+                    if (antiguoP && antiguoP.estado === 'Pendiente' && nuevoP.estado === 'Listo ✅') {
+                        mostrarToastCaja(`El pedido de [${nuevoP.referencia}] ya está listo.`);
+                        reproducirSonidoAlerta('urgente');
+                    }
+                });
+            }
+
+            if (rolActual === 'cocina') renderCocina();
+            renderDeliveries();
+        }
+
+        function mostrarToastCaja(mensaje) {
+            const toast = document.getElementById('toast-caja-alerta');
+            const texto = document.getElementById('toast-caja-texto');
+            if (toast && texto) {
+                texto.innerText = mensaje;
+                toast.classList.remove('hidden');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 8000);
+            }
+        }
+
+        function cerrarToastCaja() {
+            document.getElementById('toast-caja-alerta').classList.add('hidden');
+        }
+
+        function recargarDatosStorage() {
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || appData.usuarios;
+            appData.productos = JSON.parse(localStorage.getItem('amazonas_prods')) || appData.productos;
+            appData.mesas = JSON.parse(localStorage.getItem('amazonas_mesas')) || appData.mesas;
+            appData.deliveries = JSON.parse(localStorage.getItem('amazonas_deliveries')) || appData.deliveries;
+            appData.ventas = JSON.parse(localStorage.getItem('amazonas_ventas')) || appData.ventas;
+            appData.gastosCaja = JSON.parse(localStorage.getItem('amazonas_gastos_caja')) || appData.gastosCaja;
+            appData.dineroInicial = parseFloat(localStorage.getItem('amazonas_dinero_inicial')) || 0;
+            appData.pedidosCocina = JSON.parse(localStorage.getItem('amazonas_cocina')) || appData.pedidosCocina;
+            appData.archivoHistorico = JSON.parse(localStorage.getItem('amazonas_archivo_historico')) || appData.archivoHistorico;
+        }
+
+        function construirMenuLateral() {
+            const nav = document.getElementById('menu-nav-links');
+            if (rolActual === 'cocina') {
+                nav.innerHTML = `
+                    <button onclick="switchTab('cocina'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold text-white shadow">
+                        <i class="fa-solid fa-fire-burner text-lg"></i> Monitor de Cocina
+                    </button>
+                `;
+            } else if (rolActual === 'admin') {
+                nav.innerHTML = `
+                    <button onclick="switchTab('usuarios'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 bg-emerald-700 hover:bg-emerald-600 rounded-xl font-bold text-white shadow">
+                        <i class="fa-solid fa-users-gear text-lg"></i> Administrar Usuarios
+                    </button>
+                    <hr class="border-emerald-800 my-2">
+                    <button onclick="iniciarVentaRapida(); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold text-white shadow">
+                        <i class="fa-solid fa-bolt text-lg"></i> ⚡ Venta Rápida
+                    </button>
+                    <button onclick="switchTab('cocina'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100">
+                        <i class="fa-solid fa-fire text-amber-400"></i> Monitor de Cocina
+                    </button>
+                    <button onclick="switchTab('mesas'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100">
+                        <i class="fa-solid fa-utensils text-emerald-400"></i> Mesas Activas
+                    </button>
+                    <button onclick="switchTab('productos'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100">
+                        <i class="fa-solid fa-box-open text-emerald-400"></i> Catálogo Productos
+                    </button>
+                    <button onclick="switchTab('deliveries'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100 relative">
+                        <i class="fa-solid fa-motorcycle text-emerald-400"></i> Deliveries
+                        <span id="badge-deliveries" class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden">0</span>
+                    </button>
+                    <button onclick="switchTab('caja'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100">
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i> Caja y Reportes
+                    </button>
+                `;
+            } else {
+                nav.innerHTML = `
+                    <button onclick="iniciarVentaRapida(); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold text-white shadow">
+                        <i class="fa-solid fa-bolt text-lg"></i> ⚡ Venta Rápida
+                    </button>
+                    <hr class="border-emerald-800 my-2">
+                    <button onclick="switchTab('cocina'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100">
+                        <i class="fa-solid fa-fire text-amber-400"></i> Monitor de Cocina
+                    </button>
+                    <button onclick="switchTab('mesas'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100">
+                        <i class="fa-solid fa-utensils text-emerald-400"></i> Mesas Activas
+                    </button>
+                    <button onclick="switchTab('productos'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100">
+                        <i class="fa-solid fa-box-open text-emerald-400"></i> Catálogo Productos
+                    </button>
+                    <button onclick="switchTab('deliveries'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100 relative">
+                        <i class="fa-solid fa-motorcycle text-emerald-400"></i> Deliveries
+                        <span id="badge-deliveries" class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden">0</span>
+                    </button>
+                    <button onclick="switchTab('caja'); toggleMenu();" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-800 rounded-xl font-medium text-emerald-100">
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i> Caja y Reportes
+                    </button>
+                `;
+            }
+        }
+
+        function cerrarTurno() {
+            if (confirm('¿Desea cerrar sesión?')) {
+                localStorage.removeItem('amazonas_cajero');
+                localStorage.removeItem('amazonas_rol');
+                location.reload();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('amazonas_usuarios', JSON.stringify(appData.usuarios));
+            localStorage.setItem('amazonas_prods', JSON.stringify(appData.productos));
+            localStorage.setItem('amazonas_mesas', JSON.stringify(appData.mesas));
+            localStorage.setItem('amazonas_deliveries', JSON.stringify(appData.deliveries));
+            localStorage.setItem('amazonas_ventas', JSON.stringify(appData.ventas));
+            localStorage.setItem('amazonas_gastos_caja', JSON.stringify(appData.gastosCaja));
+            localStorage.setItem('amazonas_dinero_inicial', appData.dineroInicial);
+            localStorage.setItem('amazonas_cocina', JSON.stringify(appData.pedidosCocina));
+            localStorage.setItem('amazonas_archivo_historico', JSON.stringify(appData.archivoHistorico));
+            actualizarCaja();
+        }
+
+        function guardarDineroInicial() {
+            const input = document.getElementById('input-dinero-inicial');
+            const valor = parseFloat(input.value);
+            if (isNaN(valor) || valor < 0) {
+                alert('Por favor ingrese un monto inicial válido.');
+                return;
+            }
+            appData.dineroInicial = valor;
+            saveData();
+            input.value = '';
+            alert(`¡Dinero inicial fijado en $${valor.toFixed(2)}!`);
+        }
+
+        function registrarGastoCaja(e) {
+            e.preventDefault();
+            const montoInput = document.getElementById('gasto-monto');
+            const comInput = document.getElementById('gasto-comentario');
+            const monto = parseFloat(montoInput.value);
+
+            if (isNaN(monto) || monto <= 0) {
+                alert('Ingrese un monto de gasto válido.');
+                return;
+            }
+
+            const nuevoGasto = {
+                id: Date.now(),
+                tipo: 'Gasto',
+                descripcion: comInput.value.trim(),
+                monto: monto,
+                cajero: cajeroActual,
+                hora: new Date().toLocaleTimeString()
+            };
+
+            appData.gastosCaja.push(nuevoGasto);
+            saveData();
+
+            montoInput.value = '';
+            comInput.value = '';
+            alert('¡Gasto registrado y descontado de caja correctamente!');
+        }
+
+        function iniciarVentaRapida() {
+            pedidoTemporal = { esVentaRapida: true, mesaId: null, items: [], comidaEnviadaACocina: [] };
+            document.getElementById('modal-titulo').innerText = '⚡ Venta Rápida (Al paso)';
+            prepararModalPedido();
+        }
+
+        function promptCrearMesa() {
+            const nombre = prompt('Nombre o número de la nueva mesa (Ej: Mesa 1, Barra):');
+            if (nombre) {
+                const nuevaMesa = { id: Date.now(), nombre: nombre.trim(), items: [] };
+                appData.mesas.push(nuevaMesa);
+                saveData();
+                renderMesas();
+            }
+        }
+
+        function abrirMesa(id) {
+            const mesa = appData.mesas.find(m => m.id === id);
+            pedidoTemporal = { esVentaRapida: false, mesaId: mesa.id, items: [...mesa.items], comidaEnviadaACocina: mesa.comidaEnviadaACocina || [] };
+            document.getElementById('modal-titulo').innerText = `Consumo: ${mesa.nombre}`;
+            prepararModalPedido();
+        }
+
+        function prepararModalPedido() {
+            document.getElementById('input-buscar-prod').value = '';
+            document.getElementById('lista-busqueda-prods').classList.add('hidden');
+            renderItemsPedido();
+            document.getElementById('modal-pedido').classList.remove('hidden');
+        }
+
+        function filtrarProductosModal() {
+            const query = document.getElementById('input-buscar-prod').value.toLowerCase().trim();
+            const contenedorLista = document.getElementById('lista-busqueda-prods');
+
+            if (!query) {
+                contenedorLista.classList.add('hidden');
+                return;
+            }
+
+            const coincidentes = appData.productos.filter(p => 
+                p.nombre.toLowerCase().includes(query) || 
+                p.categoria.toLowerCase().includes(query)
+            );
+
+            if (coincidentes.length === 0) {
+                contenedorLista.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No se encontraron productos</div>`;
+            } else {
+                contenedorLista.innerHTML = coincidentes.map(p => `
+                    <div onclick="seleccionarProductoBuscado(${p.id})" class="flex items-center gap-3 p-2 hover:bg-emerald-50 cursor-pointer transition">
+                        <img src="${p.imagen || IMAGEN_DEFECTO}" class="w-10 h-10 object-cover rounded-lg border">
+                        <div class="flex-grow">
+                            <p class="font-bold text-xs text-gray-800">${p.nombre}</p>
+                            <p class="text-[10px] text-gray-400">${p.categoria}</p>
+                        </div>
+                        <span class="font-black text-xs text-emerald-600">$${p.precio.toFixed(2)}</span>
+                    </div>
+                `).join('');
+            }
+            contenedorLista.classList.remove('hidden');
+        }
+
+        function seleccionarProductoBuscado(prodId) {
+            const cantInput = document.getElementById('input-cant');
+            const cant = parseInt(cantInput.value) || 1;
+            const prod = appData.productos.find(p => p.id === prodId);
+            if (!prod) return;
+
+            const existente = pedidoTemporal.items.find(item => item.id === prod.id);
+            if (existente) {
+                existente.cant += cant;
+            } else {
+                pedidoTemporal.items.push({
+                    id: prod.id,
+                    nombre: prod.nombre,
+                    precio: prod.precio,
+                    imagen: prod.imagen || IMAGEN_DEFECTO,
+                    categoria: prod.categoria,
+                    cant: cant
+                });
+            }
+
+            if (!pedidoTemporal.esVentaRapida) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                mesa.items = [...pedidoTemporal.items];
+                mesa.comidaEnviadaACocina = [...pedidoTemporal.comidaEnviadaACocina];
+                saveData();
+                renderMesas();
+            }
+
+            document.getElementById('input-buscar-prod').value = '';
+            document.getElementById('lista-busqueda-prods').classList.add('hidden');
+            cantInput.value = 1;
+            renderItemsPedido();
+        }
+
+        function renderItemsPedido() {
+            const tbody = document.getElementById('tabla-items-pedido');
+            tbody.innerHTML = '';
+            let total = 0;
+
+            pedidoTemporal.items.forEach((item, index) => {
+                const subtotal = item.precio * item.cant;
+                total += subtotal;
+                tbody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="py-2">
+                            <img src="${item.imagen || IMAGEN_DEFECTO}" class="w-8 h-8 object-cover rounded-lg border">
+                        </td>
+                        <td class="py-2 font-bold text-xs">
+                            <input type="number" min="1" value="${item.cant}" 
+                                   onchange="actualizarCantidadItem(${index}, this.value)" 
+                                   class="w-14 p-1 border rounded bg-gray-50 text-center font-bold text-gray-800 focus:outline-none focus:border-emerald-500">
+                        </td>
+                        <td class="text-xs font-medium">${item.nombre}</td>
+                        <td class="text-right text-xs">$${item.precio.toFixed(2)}</td>
+                        <td class="text-right font-bold text-xs">$${subtotal.toFixed(2)}</td>
+                        <td class="text-center py-2">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <button onclick="abrirModalEditarProducto(${index})" title="Cambiar producto" class="bg-amber-50 hover:bg-amber-100 text-amber-700 px-2 py-1 rounded-lg font-bold text-[11px] flex items-center gap-1 transition">
+                                    <i class="fa-solid fa-pen-to-square"></i> Cambiar
+                                </button>
+                                <button onclick="eliminarItemPedido(${index})" title="Eliminar" class="bg-red-50 hover:bg-red-100 text-red-700 px-2 py-1 rounded-lg font-bold text-[11px] flex items-center gap-1 transition">
+                                    <i class="fa-solid fa-trash"></i> Eliminar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('modal-monto-total').innerText = `$${total.toFixed(2)}`;
+            actualizarEstadoBotonCocina();
+        }
+
+        function actualizarCantidadItem(index, nuevaCantidad) {
+            let cant = parseInt(nuevaCantidad);
+            if (isNaN(cant) || cant <= 0) {
+                eliminarItemPedido(index);
+                return;
+            }
+            pedidoTemporal.items[index].cant = cant;
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) {
+                    mesa.items = [...pedidoTemporal.items];
+                    mesa.comidaEnviadaACocina = [...pedidoTemporal.comidaEnviadaACocina];
+                    saveData();
+                    renderMesas();
+                }
+            }
+            renderItemsPedido();
+        }
+
+        function abrirModalEditarProducto(index) {
+            itemIndexAEditar = index;
+            const select = document.getElementById('select-nuevo-producto');
+            select.innerHTML = appData.productos.map(p => `
+                <option value="${p.id}">${p.nombre} - $${p.precio.toFixed(2)}</option>
+            `).join('');
+            document.getElementById('modal-editar-item').classList.remove('hidden');
+        }
+
+        function confirmarCambioProducto() {
+            if (itemIndexAEditar === null) return;
+            const select = document.getElementById('select-nuevo-producto');
+            const nuevoProdId = parseInt(select.value);
+            const nuevoProd = appData.productos.find(p => p.id === nuevoProdId);
+            if (!nuevoProd) return;
+
+            pedidoTemporal.items[itemIndexAEditar].id = nuevoProd.id;
+            pedidoTemporal.items[itemIndexAEditar].nombre = nuevoProd.nombre;
+            pedidoTemporal.items[itemIndexAEditar].precio = nuevoProd.precio;
+            pedidoTemporal.items[itemIndexAEditar].imagen = nuevoProd.imagen || IMAGEN_DEFECTO;
+            pedidoTemporal.items[itemIndexAEditar].categoria = nuevoProd.categoria;
+
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) {
+                    mesa.items = [...pedidoTemporal.items];
+                    mesa.comidaEnviadaACocina = [...pedidoTemporal.comidaEnviadaACocina];
+                    saveData();
+                    renderMesas();
+                }
+            }
+            cerrarModal('modal-editar-item');
+            renderItemsPedido();
+        }
+
+        function eliminarItemPedido(index) {
+            const itemEliminado = pedidoTemporal.items[index];
+            pedidoTemporal.items.splice(index, 1);
+            if (itemEliminado) {
+                pedidoTemporal.comidaEnviadaACocina = (pedidoTemporal.comidaEnviadaACocina || []).filter(id => id !== itemEliminado.id);
+            }
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) {
+                    mesa.items = [...pedidoTemporal.items];
+                    saveData();
+                    renderMesas();
+                }
+            }
+            renderItemsPedido();
+        }
+
+        function enviarComidaACocina() {
+            const comidas = pedidoTemporal.items.filter(item => {
+                const producto = appData.productos.find(p => p.id === item.id);
+                const categoria = (producto?.categoria || item.categoria || '').toLowerCase().trim();
+                return categoria === 'comida' || categoria === 'comidas';
+            });
+
+            if (comidas.length === 0) {
+                alert('No hay productos de la categoría "Comida" para enviar a Cocina.');
+                return;
+            }
+
+            const idsYaEnviados = pedidoTemporal.comidaEnviadaACocina || [];
+            const comidasNuevas = comidas.filter(item => !idsYaEnviados.includes(item.id));
+
+            if (comidasNuevas.length === 0) {
+                alert('Los productos de comida de este pedido ya fueron enviados a Cocina.');
+                return;
+            }
+
+            let referencia = 'Venta al paso';
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) referencia = mesa.nombre;
+            }
+
+            const pedidoCocina = {
+                id: Date.now(),
+                tipoServicio: pedidoTemporal.esVentaRapida ? 'Venta Rápida' : 'Mesa',
+                referencia: referencia,
+                items: comidasNuevas.map(item => ({ ...item })),
+                cajero: cajeroActual,
+                estado: 'Pendiente',
+                hora: new Date().toLocaleTimeString()
+            };
+
+            appData.pedidosCocina.push(pedidoCocina);
+
+            pedidoTemporal.comidaEnviadaACocina = [
+                ...idsYaEnviados,
+                ...comidasNuevas.map(item => item.id)
+            ];
+
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) {
+                    mesa.items = [...pedidoTemporal.items];
+                    mesa.comidaEnviadaACocina = [...pedidoTemporal.comidaEnviadaACocina];
+                }
+            }
+
+            saveData();
+            renderCocina();
+            renderMesas();
+            actualizarEstadoBotonCocina();
+
+            alert(`¡${comidasNuevas.length} producto(s) de comida enviado(s) a Cocina!`);
+        }
+
+        function actualizarEstadoBotonCocina() {
+            const boton = document.getElementById('btn-enviar-cocina');
+            if (!boton) return;
+
+            const comidas = pedidoTemporal.items.filter(item => {
+                const producto = appData.productos.find(p => p.id === item.id);
+                const categoria = (producto?.categoria || item.categoria || '').toLowerCase().trim();
+                return categoria === 'comida' || categoria === 'comidas';
+            });
+
+            const enviados = pedidoTemporal.comidaEnviadaACocina || [];
+            const pendientes = comidas.filter(item => !enviados.includes(item.id));
+
+            if (comidas.length === 0) {
+                boton.disabled = true;
+                boton.classList.add('opacity-50', 'cursor-not-allowed');
+                boton.innerHTML = '<i class="fa-solid fa-fire-burner"></i> Sin comida';
+            } else if (pendientes.length === 0) {
+                boton.disabled = true;
+                boton.classList.add('opacity-50', 'cursor-not-allowed');
+                boton.innerHTML = '<i class="fa-solid fa-check"></i> Ya enviado';
+            } else {
+                boton.disabled = false;
+                boton.classList.remove('opacity-50', 'cursor-not-allowed');
+                boton.innerHTML = '<i class="fa-solid fa-fire-burner"></i> Enviar a Cocina';
+            }
+        }
+
+        function enviarADelivery() {
+            const total = pedidoTemporal.items.reduce((sum, item) => sum + (item.precio * item.cant), 0);
+            if (total === 0) {
+                alert('El pedido está vacío.');
+                return;
+            }
+
+            const cliente = prompt('Nombre del cliente o dirección para el envío:', 'Cliente General');
+            if (!cliente) return;
+
+            appData.deliveries.push({
+                id: Date.now(),
+                cliente: cliente.trim(),
+                items: [...pedidoTemporal.items],
+                monto: total,
+                cajero: cajeroActual,
+                estado: 'Preparando'
+            });
+
+            const comidasDelivery = pedidoTemporal.items.filter(item => {
+                const producto = appData.productos.find(p => p.id === item.id);
+                const categoria = (producto?.categoria || item.categoria || '').toLowerCase().trim();
+                return categoria === 'comida' || categoria === 'comidas';
+            });
+
+            if (comidasDelivery.length > 0) {
+                appData.pedidosCocina.push({
+                    id: Date.now(),
+                    tipoServicio: 'Delivery',
+                    referencia: cliente.trim(),
+                    items: comidasDelivery.map(item => ({ ...item })),
+                    cajero: cajeroActual,
+                    estado: 'Pendiente',
+                    hora: new Date().toLocaleTimeString()
+                });
+            }
+
+            if (!pedidoTemporal.esVentaRapida) {
+                appData.mesas = appData.mesas.filter(m => m.id !== pedidoTemporal.mesaId);
+            }
+
+            saveData();
+            cerrarModal('modal-pedido');
+            renderMesas();
+            renderDeliveries();
+            renderCocina();
+            alert('¡Pedido de delivery enviado a Cocina!');
+        }
+
+        function solicitarCobroConImpresion() {
+            const total = pedidoTemporal.items.reduce((sum, item) => sum + (item.precio * item.cant), 0);
+            if (total === 0) {
+                alert('El pedido está vacío.');
+                return;
+            }
+            deliveryACobrar = null;
+            prepararModalCobroVuelto(total);
+        }
+
+        function solicitarCobroDelivery(id) {
+            deliveryACobrar = appData.deliveries.find(d => d.id === id);
+            if (!deliveryACobrar) return;
+            prepararModalCobroVuelto(deliveryACobrar.monto);
+        }
+
+        function prepararModalCobroVuelto(totalMonto) {
+            document.getElementById('modal-cobro-total-texto').innerHTML = `Total a Pagar: <strong>$${totalMonto.toFixed(2)}</strong>`;
+            const inputPaga = document.getElementById('input-monto-paga');
+            inputPaga.value = totalMonto.toFixed(2);
+            document.getElementById('display-vuelto-monto').innerText = '$0.00';
+            document.getElementById('modal-confirmar-impresion').classList.remove('hidden');
+            inputPaga.focus();
+            inputPaga.select();
+        }
+
+        function calcularVueltoDevolucion() {
+            let totalMonto = 0;
+            if (deliveryACobrar) {
+                totalMonto = deliveryACobrar.monto;
+            } else {
+                totalMonto = pedidoTemporal.items.reduce((sum, item) => sum + (item.precio * item.cant), 0);
+            }
+
+            const pagaCon = parseFloat(document.getElementById('input-monto-paga').value) || 0;
+            const vuelto = pagaCon - totalMonto;
+
+            const displayVuelto = document.getElementById('display-vuelto-monto');
+            if (vuelto >= 0) {
+                displayVuelto.innerText = `$${vuelto.toFixed(2)}`;
+                displayVuelto.className = "font-black text-emerald-600 text-lg";
+            } else {
+                displayVuelto.innerText = `Faltan $${Math.abs(vuelto).toFixed(2)}`;
+                displayVuelto.className = "font-black text-red-600 text-lg";
+            }
+        }
+
+        function confirmarCobroFinal(deseaImprimir) {
+            let totalMonto = 0;
+            if (deliveryACobrar) {
+                totalMonto = deliveryACobrar.monto;
+            } else {
+                totalMonto = pedidoTemporal.items.reduce((sum, item) => sum + (item.precio * item.cant), 0);
+            }
+
+            const pagaCon = parseFloat(document.getElementById('input-monto-paga').value) || 0;
+            if (pagaCon < totalMonto) {
+                alert('El monto con el que paga el cliente es menor al total del pedido.');
+                return;
+            }
+
+            cerrarModal('modal-confirmar-impresion');
+
+            if (deliveryACobrar) {
+                const nuevaVenta = {
+                    id: Date.now(),
+                    tipo: 'Delivery',
+                    descripcion: `Cliente: ${deliveryACobrar.cliente}`,
+                    items: [...deliveryACobrar.items],
+                    monto: deliveryACobrar.monto,
+                    cajero: deliveryACobrar.cajero,
+                    hora: new Date().toLocaleTimeString()
+                };
+
+                appData.ventas.push(nuevaVenta);
+                appData.deliveries = appData.deliveries.filter(d => d.id !== deliveryACobrar.id);
+                saveData();
+                renderDeliveries();
+
+                if (deseaImprimir) imprimirTicketFactura(nuevaVenta);
+                deliveryACobrar = null;
+                alert('¡Delivery cobrado e ingresado a caja!');
+            } else {
+                const total = pedidoTemporal.items.reduce((sum, item) => sum + (item.precio * item.cant), 0);
+                let tipoServicio = pedidoTemporal.esVentaRapida ? 'Venta Rápida' : 'Mesa';
+                let descripcionVenta = 'Venta al paso';
+                
+                if (!pedidoTemporal.esVentaRapida) {
+                    const mesaObj = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                    if (mesaObj) descripcionVenta = mesaObj.nombre;
+                }
+
+                const nuevaVenta = {
+                    id: Date.now(),
+                    tipo: tipoServicio,
+                    descripcion: descripcionVenta,
+                    items: [...pedidoTemporal.items],
+                    monto: total,
+                    cajero: cajeroActual,
+                    hora: new Date().toLocaleTimeString()
+                };
+
+                appData.ventas.push(nuevaVenta);
+
+                if (!pedidoTemporal.esVentaRapida) {
+                    appData.mesas = appData.mesas.filter(m => m.id !== pedidoTemporal.mesaId);
+                }
+
+                saveData();
+                cerrarModal('modal-pedido');
+                renderMesas();
+                renderCocina();
+
+                if (deseaImprimir) imprimirTicketFactura(nuevaVenta);
+                alert(`¡Venta cobrada con éxito! (Total: $${total.toFixed(2)} | Vuelto: $${(pagaCon - total).toFixed(2)})`);
+            }
+        }
+
+        function renderCocina() {
+            recargarDatosStorage();
+            const grid = document.getElementById('grid-cocina-pedidos');
+            const contador = document.getElementById('cocina-contador-pendientes');
+            if (!grid) return;
+
+            const pendientes = appData.pedidosCocina.filter(p => p.estado === 'Pendiente');
+            contador.innerText = `${pendientes.length} pendientes`;
+
+            if (appData.pedidosCocina.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full bg-white p-10 rounded-2xl shadow text-center text-gray-400">
+                        <i class="fa-solid fa-utensils text-5xl mb-3 text-gray-300"></i>
+                        <p class="font-bold text-base">No hay pedidos en la cocina en este momento.</p>
+                        <p class="text-xs text-gray-400 mt-1">Los nuevos cobros de caja aparecerán aquí automáticamente.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = appData.pedidosCocina.map(p => {
+                const esPendiente = p.estado === 'Pendiente';
+                let badgeTipoColor = 'bg-emerald-100 text-emerald-800';
+                if (p.tipoServicio === 'Delivery') badgeTipoColor = 'bg-blue-100 text-blue-800';
+                if (p.tipoServicio === 'Venta Rápida') badgeTipoColor = 'bg-purple-100 text-purple-800';
+
+                return `
+                    <div class="bg-white rounded-2xl shadow-lg border-2 ${esPendiente ? 'border-amber-500 animar-alerta' : 'border-emerald-500'} p-4 flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="flex justify-between items-start border-b pb-2">
+                                <div>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${badgeTipoColor}">${p.tipoServicio}</span>
+                                    <h3 class="font-black text-gray-900 text-base mt-1">${p.referencia}</h3>
+                                    <p class="text-[10px] text-gray-400">Atendido por: ${p.cajero} • ${p.hora}</p>
+                                </div>
+                                <span class="px-2 py-1 rounded-full text-xs font-bold ${esPendiente ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                                    ${p.estado}
+                                </span>
+                            </div>
+
+                            <div class="space-y-2 mt-3 max-h-56 overflow-y-auto pr-1">
+                                ${p.items.map(i => `
+                                    <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-xl border">
+                                        <img src="${i.imagen || IMAGEN_DEFECTO}" class="w-10 h-10 object-cover rounded-lg border">
+                                        <div class="flex-grow">
+                                            <p class="text-xs font-bold text-gray-800"><span class="text-emerald-700 text-sm font-black">${i.cant}x</span> ${i.nombre}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-3">
+                            ${esPendiente ? `
+                                <button onclick="marcarPedidoListo(${p.id})" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition">
+                                    <i class="fa-solid fa-check-double text-sm"></i> Marcar como LISTO (Avisar a Caja)
+                                </button>
+                            ` : `
+                                <button onclick="eliminarPedidoCocina(${p.id})" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 transition">
+                                    <i class="fa-solid fa-trash"></i> Quitar del Monitor
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function marcarPedidoListo(id) {
+            const pedido = appData.pedidosCocina.find(p => p.id === id);
+            if (pedido) {
+                pedido.estado = 'Listo ✅';
+                saveData();
+                renderCocina();
+            }
+        }
+
+        function eliminarPedidoCocina(id) {
+            appData.pedidosCocina = appData.pedidosCocina.filter(p => p.id !== id);
+            saveData();
+            renderCocina();
+        }
+
+        function imprimirTicketFactura(venta) {
+            const area = document.getElementById('area-impresion-factura');
+            const fechaStr = new Date().toLocaleDateString();
+
+            let detalleVenta = venta.descripcion;
+            const itemsHtml = (venta.items && venta.items.length > 0) ? venta.items.map(i => {
+                const cant = i.cant || 1;
+                const precio = parseFloat(i.precio || 0);
+                const subtotal = cant * precio;
+                return `
+                    <tr>
+                        <td style="vertical-align: top; font-weight: bold; padding-right: 4px;">${cant}x</td>
+                        <td style="padding-right: 2px;">${i.nombre}<br><span style="font-size: 8px;">($${precio.toFixed(2)} c/u)</span></td>
+                        <td style="text-align: right; vertical-align: top; font-weight: bold;">$${subtotal.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('') : `<tr><td colspan="3" style="text-align:center;">Sin detalle</td></tr>`;
+
+            area.innerHTML = `
+                <div style="text-align: center; font-size: 12px; margin-bottom: 5px;">
+                    <strong style="font-size: 16px;">EL AMAZONAS</strong><br>
+                    <span style="font-size: 10px;">Comprobante de Venta</span><br>
+                    --------------------------------
+                </div>
+                <div style="font-size: 10px; margin-bottom: 6px; line-height: 1.4;">
+                    <strong>Fecha:</strong> ${fechaStr}<br>
+                    <strong>Hora:</strong> ${venta.hora || new Date().toLocaleTimeString()}<br>
+                    <strong>Operador:</strong> ${venta.cajero || cajeroActual}<br>
+                    <strong>Tipo:</strong> ${venta.tipo}<br>
+                    <strong>Detalle:</strong> ${detalleVenta}<br>
+                    --------------------------------
+                </div>
+                <table style="width: 100%; font-size: 10px; border-collapse: collapse; margin-bottom: 6px;">
+                    <thead>
+                        <tr style="border-bottom: 1px dashed #000;">
+                            <th style="text-align: left;">Cant</th>
+                            <th style="text-align: left;">Producto</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itemsHtml}</tbody>
+                </table>
+                <div style="text-align: right; font-size: 12px; margin-top: 4px; font-weight: bold;">
+                    TOTAL: $${parseFloat(venta.monto || 0).toFixed(2)}
+                </div>
+                <div style="text-align: center; font-size: 10px; margin-top: 10px;">
+                    --------------------------------<br>¡Gracias por su compra!
+                </div>
+            `;
+            window.print();
+        }
+
+        async function finalizarDia() {
+            if (appData.ventas.length === 0 && appData.gastosCaja.length === 0 && appData.dineroInicial === 0) {
+                alert('No hay registros ni movimientos en la caja en el día de hoy.');
+                return;
+            }
+            if (!confirm('¿Está seguro de que desea finalizar el día? Se imprimirá el cierre, se guardarán los datos en el archivo administrativo y se reiniciará la caja a $0.00.')) return;
+
+            imprimirReporteCierreDia();
+
+            const resumenJornada = {
+                id: Date.now(),
+                fecha: new Date().toLocaleDateString(),
+                horaCierre: new Date().toLocaleTimeString(),
+                administradorCierre: cajeroActual,
+                dineroInicial: appData.dineroInicial,
+                totalVentas: appData.ventas.reduce((sum, v) => sum + v.monto, 0),
+                totalGastos: appData.gastosCaja.reduce((sum, g) => sum + g.monto, 0),
+                ventas: [...appData.ventas],
+                gastos: [...appData.gastosCaja]
+            };
+
+            appData.archivoHistorico.push(resumenJornada);
+
+            appData.ventas = [];
+            appData.gastosCaja = [];
+            appData.dineroInicial = 0;
+            appData.pedidosCocina = [];
+            saveData();
+
+            alert('¡Cierre de día completado con éxito! Se imprimió el reporte y la información quedó respaldada en el archivo exclusivo para Administradores.');
+            location.reload();
+        }
+
+        function imprimirReporteCierreDia() {
+            const area = document.getElementById('area-impresion-factura');
+            const fechaStr = new Date().toLocaleDateString();
+            const totalVentas = appData.ventas.reduce((sum, v) => sum + v.monto, 0);
+            const totalGastos = appData.gastosCaja.reduce((sum, g) => sum + g.monto, 0);
+            const efectivoNeto = appData.dineroInicial + totalVentas - totalGastos;
+
+            let ventasHtml = appData.ventas.length > 0 ? appData.ventas.map(v => `<tr><td>${v.hora}</td><td>${v.tipo} (${v.descripcion})</td><td style="text-align:right;">+$${v.monto.toFixed(2)}</td></tr>`).join('') : `<tr><td colspan="3" style="text-align:center;">Sin ventas registradas</td></tr>`;
+            let gastosHtml = appData.gastosCaja.length > 0 ? appData.gastosCaja.map(g => `<tr><td>${g.hora}</td><td>Gasto: ${g.descripcion}</td><td style="text-align:right;">-$${g.monto.toFixed(2)}</td></tr>`).join('') : '';
+
+            area.innerHTML = `
+                <div style="text-align: center; font-size: 12px; margin-bottom: 5px;">
+                    <strong style="font-size: 16px;">EL AMAZONAS</strong><br>
+                    <span style="font-size: 12px; font-weight: bold;">REPORTE DE CIERRE DE DÍA</span><br>
+                    <span style="font-size: 10px;">Fecha: ${fechaStr}</span><br>
+                    --------------------------------
+                </div>
+                <div style="font-size: 10px; margin-bottom: 8px; line-height: 1.4;">
+                    <strong>Fondo Inicial:</strong> $${appData.dineroInicial.toFixed(2)}<br>
+                    <strong>Total Ventas:</strong> $${totalVentas.toFixed(2)}<br>
+                    <strong>Total Gastos:</strong> $${totalGastos.toFixed(2)}<br>
+                    <strong>Efectivo Neto en Caja:</strong> $${efectivoNeto.toFixed(2)}<br>
+                    <strong>Responsable Cierre:</strong> ${cajeroActual}<br>
+                    --------------------------------
+                </div>
+                <div style="font-size: 10px; font-weight: bold; margin-bottom: 4px;">DETALLE DE MOVIMIENTOS:</div>
+                <table style="width: 100%; font-size: 9px; border-collapse: collapse; margin-bottom: 6px;">
+                    <tbody>
+                        ${ventasHtml}
+                        ${gastosHtml}
+                    </tbody>
+                </table>
+                <div style="text-align: center; font-size: 10px; margin-top: 15px;">
+                    --------------------------------<br>Fin del Reporte Diario
+                </div>
+            `;
+            window.print();
+        }
+
+        function renderMesas() {
+            const grid = document.getElementById('grid-mesas');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            if (appData.mesas.length === 0) {
+                grid.innerHTML = `<p class="col-span-full text-center text-sm text-gray-400 py-6">No hay mesas abiertas. Presiona "+ Abrir Mesa" arriba.</p>`;
+                return;
+            }
+
+            appData.mesas.forEach(mesa => {
+                const total = mesa.items.reduce((sum, i) => sum + (i.precio * i.cant), 0);
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-2xl shadow border-2 border-emerald-400 cursor-pointer hover:shadow-md transition";
+                card.onclick = () => abrirMesa(mesa.id);
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-gray-900">${mesa.nombre}</span>
+                        <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Abierta</span>
+                    </div>
+                    <p class="text-xs text-gray-500">${mesa.items.length} ítems</p>
+                    <p class="text-xl font-black text-emerald-700 mt-2">$${total.toFixed(2)}</p>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderDeliveries() {
+            const container = document.getElementById('grid-deliveries');
+            const badge = document.getElementById('badge-deliveries');
+            if (!container) return;
+
+            const pendientes = appData.deliveries.filter(d => d.estado === 'Preparando').length;
+            if (badge) {
+                if (pendientes > 0) {
+                    badge.innerText = pendientes;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            if (appData.deliveries.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full bg-white p-8 rounded-2xl shadow text-center text-gray-400">
+                        <i class="fa-solid fa-motorcycle text-5xl mb-3 text-gray-300"></i>
+                        <p class="font-bold">No hay pedidos en delivery.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = appData.deliveries.map(del => `
+                <div class="bg-white rounded-2xl shadow border-2 border-amber-400 p-4 flex flex-col justify-between space-y-3">
+                    <div>
+                        <div class="flex justify-between items-start border-b pb-2">
+                            <div>
+                                <h3 class="font-extrabold text-gray-900">${del.cliente}</h3>
+                                <p class="text-[10px] text-gray-400">Atendido por: ${del.cajero}</p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">${del.estado}</span>
+                        </div>
+                        <div class="space-y-1 max-h-28 overflow-y-auto mt-2 pt-1">
+                            ${del.items.map(i => `
+                                <div class="flex justify-between text-xs">
+                                    <span><b>${i.cant}x</b> ${i.nombre}</span>
+                                    <span class="text-gray-500">$${(i.precio * i.cant).toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="border-t pt-3 space-y-2">
+                        <div class="flex justify-between items-center font-black">
+                            <span class="text-xs text-gray-400">Total:</span>
+                            <span class="text-lg text-emerald-600">$${del.monto.toFixed(2)}</span>
+                        </div>
+                        <button onclick="solicitarCobroDelivery(${del.id})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 shadow">
+                            <i class="fa-solid fa-check"></i> Cobrar y Entregar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function actualizarCaja() {
+            const totalVentas = appData.ventas.reduce((sum, v) => sum + v.monto, 0);
+            const totalGastos = appData.gastosCaja.reduce((sum, g) => sum + g.monto, 0);
+            const efectivoNeto = appData.dineroInicial + totalVentas - totalGastos;
+
+            const cajaTotalEl = document.getElementById('caja-total');
+            const cajaTotalGastosEl = document.getElementById('caja-total-gastos');
+            const cajaEfectivoNetoEl = document.getElementById('caja-efectivo-neto');
+            const displayDineroInicial = document.getElementById('display-dinero-inicial');
+
+            if (cajaTotalEl) cajaTotalEl.innerText = `$${totalVentas.toFixed(2)}`;
+            if (cajaTotalGastosEl) cajaTotalGastosEl.innerText = `$${totalGastos.toFixed(2)}`;
+            if (cajaEfectivoNetoEl) cajaEfectivoNetoEl.innerText = `$${efectivoNeto.toFixed(2)}`;
+            if (displayDineroInicial) displayDineroInicial.innerText = `$${appData.dineroInicial.toFixed(2)}`;
+
+            const historial = document.getElementById('historial-ventas');
+            if (!historial) return;
+
+            let combinados = [
+                ...appData.ventas.map(v => ({ ...v, esGasto: false })),
+                ...appData.gastosCaja.map(g => ({ ...g, esGasto: true }))
+            ];
+
+            if (combinados.length === 0) {
+                historial.innerHTML = `<p class="text-center text-xs text-gray-400 py-4">No hay ventas ni gastos registrados hoy.</p>`;
+                return;
+            }
+
+            historial.innerHTML = combinados.map(item => `
+                <div class="bg-gray-50 border rounded-2xl p-3 space-y-2">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="font-bold text-sm text-gray-800">
+                            ${item.esGasto ? `<i class="fa-solid fa-minus-circle text-purple-600 mr-1"></i> Gasto: ${item.descripcion}` : `<i class="fa-solid fa-cash-register text-emerald-600 mr-1"></i> ${item.tipo} - ${item.descripcion}`}
+                        </span>
+                        <span class="font-black ${item.esGasto ? 'text-purple-600' : 'text-emerald-600'} text-base">
+                            ${item.esGasto ? '-$' : '+$'}${item.monto.toFixed(2)}
+                        </span>
+                    </div>
+                    <div class="text-[11px] text-gray-400">${item.hora} • Registrado por: ${item.cajero}</div>
+                </div>
+            `).join('');
+        }
+
+        function switchTab(tab) {
+            ['cocina', 'mesas', 'productos', 'deliveries', 'caja', 'usuarios'].forEach(t => {
+                const el = document.getElementById(`section-${t}`);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(`section-${tab}`);
+            if (target) target.classList.remove('hidden');
+
+            if (tab === 'productos') renderProductos();
+            if (tab === 'deliveries') renderDeliveries();
+            if (tab === 'cocina') renderCocina();
+            if (tab === 'caja') actualizarCaja();
+            if (tab === 'usuarios') {
+                if (rolActual !== 'admin') {
+                    alert('Acceso restringido solo para administradores.');
+                    switchTab('mesas');
+                    return;
+                }
+                renderUsuariosAdmin();
+                renderArchivoHistoricoAdmin();
+            }
+        }
+
+        function renderUsuariosAdmin() {
+            recargarDatosStorage();
+            const tbody = document.getElementById('tabla-usuarios-admin');
+            if (!tbody) return;
+
+            if (appData.usuarios.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-400">No hay usuarios registrados.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = appData.usuarios.map((u, idx) => {
+                let badgeRol = 'bg-emerald-100 text-emerald-800';
+                let nombreRol = 'Caja / Salón';
+                if (u.rol === 'admin') {
+                    badgeRol = 'bg-purple-100 text-purple-800';
+                    nombreRol = 'Administrador Total';
+                } else if (u.rol === 'cocina') {
+                    badgeRol = 'bg-amber-100 text-amber-800';
+                    nombreRol = 'Cocina';
+                }
+
+                return `
+                    <tr class="hover:bg-gray-50 transition border-b">
+                        <td class="p-3 font-bold text-gray-800"><i class="fa-solid fa-user text-emerald-600 mr-2"></i>${u.usuario}</td>
+                        <td class="p-3 text-gray-500 font-mono">••••${u.password.slice(-2)}</td>
+                        <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-extrabold ${badgeRol}">${nombreRol}</span></td>
+                        <td class="p-3 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="abrirEditarUsuarioAdmin(${idx})" class="bg-amber-50 text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded-xl font-bold text-xs">Editar</button>
+                                <button onclick="eliminarUsuarioAdmin(${idx})" class="bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1.5 rounded-xl font-bold text-xs">Quitar</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderArchivoHistoricoAdmin() {
+            const contenedor = document.getElementById('contenedor-archivo-historico');
+            if (!contenedor) return;
+
+            if (appData.archivoHistorico.length === 0) {
+                contenedor.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">No hay cierres históricos guardados todavía.</p>`;
+                return;
+            }
+
+            contenedor.innerHTML = appData.archivoHistorico.map((h, i) => `
+                <div class="bg-gray-50 border p-4 rounded-xl space-y-2">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <div>
+                            <span class="font-bold text-sm text-gray-800">Cierre de Fecha: ${h.fecha} (${h.horaCierre})</span>
+                            <p class="text-[11px] text-gray-500">Administrador responsable: <strong>${h.administradorCierre}</strong></p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs text-gray-400">Ventas Totales:</span>
+                            <p class="font-black text-emerald-600 text-base">$${h.totalVentas.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-600 flex justify-between">
+                        <span>Fondo inicial: $${h.dineroInicial.toFixed(2)}</span>
+                        <span>Gastos descontados: $${h.totalGastos.toFixed(2)}</span>
+                        <span>Transacciones guardadas: ${h.ventas.length} ventas</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function limpiarArchivoHistorico() {
+            if (confirm('¿Desea vaciar el archivo histórico de cierres? Esta acción no se puede deshacer.')) {
+                appData.archivoHistorico = [];
+                saveData();
+                renderArchivoHistoricoAdmin();
+            }
+        }
+
+        function abrirModalUsuarioAdmin() {
+            document.getElementById('usuario-idx-editar').value = '';
+            document.getElementById('admin-user-nombre').value = '';
+            document.getElementById('admin-user-pass').value = '';
+            document.getElementById('admin-user-rol').value = 'caja';
+            document.getElementById('modal-usuario-titulo').innerText = 'Crear Nuevo Usuario';
+            document.getElementById('modal-usuario-admin').classList.remove('hidden');
+        }
+
+        function abrirEditarUsuarioAdmin(idx) {
+            const u = appData.usuarios[idx];
+            if (!u) return;
+            document.getElementById('usuario-idx-editar').value = idx;
+            document.getElementById('admin-user-nombre').value = u.usuario;
+            document.getElementById('admin-user-pass').value = u.password;
+            document.getElementById('admin-user-rol').value = u.rol;
+            document.getElementById('modal-usuario-titulo').innerText = 'Editar Usuario';
+            document.getElementById('modal-usuario-admin').classList.remove('hidden');
+        }
+
+        function guardarUsuarioAdmin(e) {
+            e.preventDefault();
+            const idxStr = document.getElementById('usuario-idx-editar').value;
+            const nombre = document.getElementById('admin-user-nombre').value.trim();
+            const pass = document.getElementById('admin-user-pass').value.trim();
+            const rol = document.getElementById('admin-user-rol').value;
+
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || [];
+
+            if (idxStr !== '') {
+                const idx = parseInt(idxStr);
+                appData.usuarios[idx].usuario = nombre;
+                appData.usuarios[idx].password = pass;
+                appData.usuarios[idx].rol = rol;
+            } else {
+                const existe = appData.usuarios.find(u => u.usuario.toLowerCase() === nombre.toLowerCase());
+                if (existe) {
+                    alert('Ya existe un usuario con este nombre.');
+                    return;
+                }
+                appData.usuarios.push({ usuario: nombre, password: pass, rol: rol });
+            }
+
+            saveData();
+            cerrarModal('modal-usuario-admin');
+            renderUsuariosAdmin();
+            alert('¡Usuario guardado correctamente!');
+        }
+
+        function eliminarUsuarioAdmin(idx) {
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || [];
+            if (appData.usuarios.length <= 1) {
+                alert('No puedes eliminar el único usuario restante del sistema.');
+                return;
+            }
+            if (confirm(`¿Seguro que deseas eliminar al usuario "${appData.usuarios[idx].usuario}"?`)) {
+                appData.usuarios.splice(idx, 1);
+                saveData();
+                renderUsuariosAdmin();
+            }
+        }
+
+        function renderProductos() {
+            recargarDatosStorage();
+            const tbody = document.getElementById('tabla-productos');
+            if (!tbody) return;
+            if (appData.productos.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">Catálogo vacío.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = appData.productos.map(p => `
+                <tr onclick="editarProductoCatalogo(${p.id})" class="hover:bg-emerald-50 cursor-pointer transition border-b">
+                    <td class="p-3"><img src="${p.imagen || IMAGEN_DEFECTO}" class="w-10 h-10 object-cover rounded-lg border"></td>
+                    <td class="p-3 font-semibold text-gray-800">${p.nombre}</td>
+                    <td class="p-3 text-gray-500">${p.categoria}</td>
+                    <td class="p-3 text-right font-bold text-emerald-600">$${p.precio.toFixed(2)}</td>
+                    <td class="p-3 text-center" onclick="event.stopPropagation()">
+                        <button onclick="eliminarProductoDelCatalogo(${p.id})" class="bg-red-50 text-red-700 px-3 py-1.5 rounded-xl font-bold text-xs">Eliminar</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editarProductoCatalogo(id) {
+            const prod = appData.productos.find(p => p.id === id);
+            if (!prod) return;
+            document.getElementById('prod-id-editar').value = prod.id;
+            document.getElementById('prod-nombre').value = prod.nombre;
+            document.getElementById('prod-categoria').value = prod.categoria;
+            document.getElementById('prod-precio').value = prod.precio;
+            document.getElementById('modal-producto-titulo').innerText = 'Editar Producto';
+            document.getElementById('modal-producto').classList.remove('hidden');
+        }
+
+        function eliminarProductoDelCatalogo(id) {
+            if (confirm('¿Está seguro, mi loco, de que quiere eliminar este producto del menú?')) {
+                appData.productos = appData.productos.filter(p => p.id !== id);
+                saveData();
+                renderProductos();
+                alert('¡Producto borrado nítido!');
+            }
+        }
+
+        function cerrarModal(idModal) {
+            const modal = document.getElementById(idModal);
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function abrirModalProducto() {
+            document.getElementById('prod-id-editar').value = '';
+            document.getElementById('prod-nombre').value = '';
+            document.getElementById('prod-categoria').value = '';
+            document.getElementById('prod-precio').value = '';
+            document.getElementById('prod-archivo-foto').value = '';
+            document.getElementById('modal-producto-titulo').innerText = 'Crear Producto Nuevo';
+            document.getElementById('modal-producto').classList.remove('hidden');
+        }
+
+        function abrirModalQuitarProducto() {
+            const select = document.getElementById('select-quitar-producto');
+            select.innerHTML = appData.productos.map(p => `<option value="${p.id}">${p.nombre} - $${p.precio.toFixed(2)}</option>`).join('');
+            document.getElementById('modal-quitar-producto').classList.remove('hidden');
+        }
+
+        function confirmarQuitarProductoModal() {
+            const select = document.getElementById('select-quitar-producto');
+            if(!select.value) return;
+            const id = parseInt(select.value);
+            
+            appData.productos = appData.productos.filter(p => p.id !== id);
+            saveData();
+            cerrarModal('modal-quitar-producto');
+            renderProductos();
+            alert('Producto eliminado correctamente.');
+        }
+
+        function guardarProducto(e) {
+            e.preventDefault();
+            const idInput = document.getElementById('prod-id-editar').value;
+            const nombre = document.getElementById('prod-nombre').value.trim();
+            const categoria = document.getElementById('prod-categoria').value.trim();
+            const precio = parseFloat(document.getElementById('prod-precio').value);
+            const archivoInput = document.getElementById('prod-archivo-foto');
+            
+            // Función interna para procesar el guardado final
+            const finalizarGuardado = (imgData) => {
+                if (idInput) {
+                    // Editar existente
+                    const idx = appData.productos.findIndex(p => p.id == idInput);
+                    if (idx > -1) {
+                        appData.productos[idx].nombre = nombre;
+                        appData.productos[idx].categoria = categoria;
+                        appData.productos[idx].precio = precio;
+                        if(imgData) appData.productos[idx].imagen = imgData;
+                    }
+                } else {
+                    // Crear nuevo
+                    appData.productos.push({
+                        id: Date.now(),
+                        nombre: nombre,
+                        categoria: categoria,
+                        precio: precio,
+                        imagen: imgData || IMAGEN_DEFECTO
+                    });
+                }
+                saveData();
+                cerrarModal('modal-producto');
+                renderProductos();
+                alert('¡Producto guardado meloso en el catálogo!');
+            };
+
+            // Lógica para convertir la foto subida en Base64 y guardarla
+            if (archivoInput.files && archivoInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(eventoLectura) {
+                    finalizarGuardado(eventoLectura.target.result);
+                };
+                reader.readAsDataURL(archivoInput.files[0]);
+            } else {
+                finalizarGuardado(idInput ? null : IMAGEN_DEFECTO); 
+            }
+        }
+    </script>
+</body>
+</html>
