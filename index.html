@@ -453,8 +453,8 @@
                     <input type="number" step="0.01" id="prod-precio" placeholder="Precio ($)" required class="w-full p-2 border rounded-xl text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Foto del Producto (URL o Enlace)</label>
-                    <input type="text" id="prod-url-foto" placeholder="https://..." class="w-full p-2 border rounded-xl text-sm">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Foto del Producto</label>
+                    <input type="file" id="prod-archivo-foto" accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
                 </div>
                 <div class="flex justify-end gap-2 border-t pt-3">
                     <button type="button" onclick="cerrarModal('modal-producto')" class="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl">Cancelar</button>
@@ -492,7 +492,7 @@
         <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-xl">
             <h3 id="modal-usuario-titulo" class="text-lg font-bold border-b pb-2">Gestionar Usuario</h3>
             <form onsubmit="guardarUsuarioAdmin(event)" class="space-y-3">
-                <input type="hidden" id="usuario-id-editar">
+                <input type="hidden" id="usuario-idx-editar">
                 <div>
                     <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Nombre de Usuario</label>
                     <input type="text" id="admin-user-nombre" placeholder="Ej: Omeli" required class="w-full p-2 border rounded-xl text-sm">
@@ -520,30 +520,6 @@
     <!-- CONTENEDOR OCULTO PARA IMPRESIÓN TÉRMICA -->
     <div id="area-impresion-factura" class="hidden"></div>
 
-    <!-- FIREBASE SDKs (Modular v10) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyByyR9hhB9rdfMkafylF7rtZGrU38dN0Fg",
-            authDomain: "mi-negocito-rd.firebaseapp.com",
-            projectId: "mi-negocito-rd",
-            storageBucket: "mi-negocito-rd.firebasestorage.app",
-            messagingSenderId: "806686006003",
-            appId: "1:806686006003:web:6b8ebb846f6d6a5e553586",
-            measurementId: "G-4RGBK1213X"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        window.db = db;
-        window.FB_SDK = { collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, getDoc };
-
-        // Inicializar datos base si Firestore está vacío y arrancar la app
-        window.inicializarSistemaFirebase();
-    </script>
-
     <!-- SCRIPT DE CONTROL Y LÓGICA DE NEGOCIO -->
     <script>
         let cajeroActual = localStorage.getItem('amazonas_cajero') || '';
@@ -551,121 +527,41 @@
         const IMAGEN_DEFECTO = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=60';
 
         let appData = {
-            usuarios: [],
-            productos: [],
-            mesas: [],
-            deliveries: [],
-            ventas: [],
-            gastosCaja: [],
-            dineroInicial: 0,
-            pedidosCocina: [],
-            archivoHistorico: []
+            usuarios: JSON.parse(localStorage.getItem('amazonas_usuarios')) || [],
+            productos: JSON.parse(localStorage.getItem('amazonas_prods')) || [
+                { id: 1, nombre: 'Refresco Cola', categoria: 'Bebidas', precio: 50, imagen: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=100&auto=format&fit=crop&q=60' },
+                { id: 2, nombre: 'Cerveza Fría', categoria: 'Bebidas', precio: 150, imagen: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=100&auto=format&fit=crop&q=60' },
+                { id: 3, nombre: 'Empanada', categoria: 'Comidas', precio: 60, imagen: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=100&auto=format&fit=crop&q=60' }
+            ],
+            mesas: JSON.parse(localStorage.getItem('amazonas_mesas')) || [],
+            deliveries: JSON.parse(localStorage.getItem('amazonas_deliveries')) || [],
+            ventas: JSON.parse(localStorage.getItem('amazonas_ventas')) || [],
+            gastosCaja: JSON.parse(localStorage.getItem('amazonas_gastos_caja')) || [],
+            dineroInicial: parseFloat(localStorage.getItem('amazonas_dinero_inicial')) || 0,
+            pedidosCocina: JSON.parse(localStorage.getItem('amazonas_cocina')) || [],
+            archivoHistorico: JSON.parse(localStorage.getItem('amazonas_archivo_historico')) || []
         };
+
+        const adminPorDefecto = { usuario: 'Omeli', password: '1998', rol: 'admin' };
+        if (!appData.usuarios.some(u => u.usuario.toLowerCase() === 'omeli')) {
+            appData.usuarios.push(adminPorDefecto);
+        }
+
+        if (!localStorage.getItem('amazonas_prods')) {
+            localStorage.setItem('amazonas_prods', JSON.stringify(appData.productos));
+        }
+        localStorage.setItem('amazonas_usuarios', JSON.stringify(appData.usuarios));
 
         let pedidoTemporal = { esVentaRapida: false, mesaId: null, items: [], comidaEnviadaACocina: [] };
         let deliveryACobrar = null;
         let itemIndexAEditar = null;
-        let unsubs = [];
+        let globalInterval = null;
+        
+        let ultimoConteoCocina = appData.pedidosCocina.length;
+        let ultimaListaCocinaJSON = JSON.stringify(appData.pedidosCocina);
 
-        window.inicializarSistemaFirebase = async function() {
-            const { collection, getDocs, setDoc, doc, onSnapshot } = window.FB_SDK;
-            const db = window.db;
-
-            // 1. Verificar productos iniciales
-            const prodsSnap = await getDocs(collection(db, "productos"));
-            if (prodsSnap.empty) {
-                const prodsPorDefecto = [
-                    { id: '1', nombre: 'Refresco Cola', categoria: 'Bebidas', precio: 50, imagen: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=100&auto=format&fit=crop&q=60' },
-                    { id: '2', nombre: 'Cerveza Fría', categoria: 'Bebidas', precio: 150, imagen: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=100&auto=format&fit=crop&q=60' },
-                    { id: '3', nombre: 'Empanada', categoria: 'Comidas', precio: 60, imagen: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=100&auto=format&fit=crop&q=60' }
-                ];
-                for (let p of prodsPorDefecto) {
-                    await setDoc(doc(db, "productos", p.id), p);
-                }
-            }
-
-            // 2. Verificar usuario admin por defecto
-            const usersSnap = await getDocs(collection(db, "usuarios"));
-            if (usersSnap.empty) {
-                await setDoc(doc(db, "usuarios", "Omeli"), { usuario: 'Omeli', password: '1998', rol: 'admin' });
-            }
-
-            // 3. Escuchar cambios en tiempo real desde Firestore para sincronizar dispositivos
-            sincronizarFirestoreEnTiempoReal();
-
-            if (cajeroActual) {
-                iniciarPantallaPrincipal();
-            }
-        }
-
-        function sincronizarFirestoreEnTiempoReal() {
-            const { collection, onSnapshot } = window.FB_SDK;
-            const db = window.db;
-
-            // Limpiar listeners previos si existen
-            unsubs.forEach(u => u());
-            unsubs = [];
-
-            unsubs.push(onSnapshot(collection(db, "productos"), (snapshot) => {
-                appData.productos = snapshot.docs.map(d => ({ idFirebase: d.id, ...d.data() }));
-                if (document.getElementById('section-productos') && !document.getElementById('section-productos').classList.contains('hidden')) {
-                    renderProductos();
-                }
-            }));
-
-            unsubs.push(onSnapshot(collection(db, "mesas"), (snapshot) => {
-                appData.mesas = snapshot.docs.map(d => ({ idFirebase: d.id, ...d.data() }));
-                if (cajeroActual) renderMesas();
-            }));
-
-            unsubs.push(onSnapshot(collection(db, "deliveries"), (snapshot) => {
-                appData.deliveries = snapshot.docs.map(d => ({ idFirebase: d.id, ...d.data() }));
-                if (cajeroActual) renderDeliveries();
-            }));
-
-            unsubs.push(onSnapshot(collection(db, "cocina"), (snapshot) => {
-                const antes = appData.pedidosCocina.length;
-                appData.pedidosCocina = snapshot.docs.map(d => ({ idFirebase: d.id, ...d.data() }));
-                if (cajeroActual) {
-                    if (appData.pedidosCocina.length > antes && rolActual === 'cocina') {
-                        reproducirSonidoAlerta('urgente');
-                    }
-                    renderCocina();
-                }
-            }));
-
-            unsubs.push(onSnapshot(collection(db, "ventas"), (snapshot) => {
-                appData.ventas = snapshot.docs.map(d => ({ idFirebase: d.id, ...d.data() }));
-                if (cajeroActual) actualizarCaja();
-            }));
-
-            unsubs.push(onSnapshot(collection(db, "gastosCaja"), (snapshot) => {
-                appData.gastosCaja = snapshot.docs.map(d => ({ idFirebase: d.id, ...d.data() }));
-                if (cajeroActual) actualizarCaja();
-            }));
-
-            unsubs.push(onSnapshot(collection(db, "usuarios"), (snapshot) => {
-                appData.usuarios = snapshot.docs.map(d => ({ idFirebase: d.id, ...d.data() }));
-                if (rolActual === 'admin' && document.getElementById('section-usuarios') && !document.getElementById('section-usuarios').classList.contains('hidden')) {
-                    renderUsuariosAdmin();
-                }
-            }));
-
-            unsubs.push(onSnapshot(collection(db, "configuracion"), (snapshot) => {
-                snapshot.forEach(docSnap => {
-                    if (docSnap.id === 'caja_global') {
-                        appData.dineroInicial = docSnap.data().dineroInicial || 0;
-                        if (cajeroActual) actualizarCaja();
-                    }
-                });
-            }));
-
-            unsubs.push(onSnapshot(collection(db, "archivoHistorico"), (snapshot) => {
-                appData.archivoHistorico = snapshot.docs.map(d => ({ idFirebase: d.id, ...d.data() }));
-                if (rolActual === 'admin' && document.getElementById('section-usuarios') && !document.getElementById('section-usuarios').classList.contains('hidden')) {
-                    renderArchivoHistoricoAdmin();
-                }
-            }));
+        if (cajeroActual) {
+            iniciarPantallaPrincipal();
         }
 
         function cambiarVistaAuth(vista) {
@@ -684,11 +580,13 @@
             }
         }
 
-        async function procesarRegistro(e) {
+        function procesarRegistro(e) {
             e.preventDefault();
             const usuarioInput = document.getElementById('reg-usuario').value.trim();
             const passwordInput = document.getElementById('reg-password').value.trim();
             const rolInput = document.getElementById('reg-rol').value;
+
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || [];
 
             const existente = appData.usuarios.find(u => u.usuario.toLowerCase() === usuarioInput.toLowerCase());
             if (existente) {
@@ -696,21 +594,23 @@
                 return;
             }
 
-            const { setDoc, doc } = window.FB_SDK;
-            await setDoc(doc(window.db, "usuarios", usuarioInput), {
+            appData.usuarios.push({
                 usuario: usuarioInput,
                 password: passwordInput,
                 rol: rolInput
             });
+            localStorage.setItem('amazonas_usuarios', JSON.stringify(appData.usuarios));
 
             alert('¡Cuenta creada con éxito! Ahora puede iniciar sesión con sus datos.');
             cambiarVistaAuth('login');
         }
 
-        async function procesarLogin(e) {
+        function procesarLogin(e) {
             e.preventDefault();
             const usuarioInput = document.getElementById('login-usuario').value.trim();
             const passwordInput = document.getElementById('login-password').value.trim();
+
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || [];
 
             const usuarioEncontrado = appData.usuarios.find(u => 
                 u.usuario.toLowerCase() === usuarioInput.toLowerCase() && u.password === passwordInput
@@ -799,6 +699,46 @@
             renderDeliveries();
             renderCocina();
             actualizarCaja();
+            
+            if (!globalInterval) {
+                globalInterval = setInterval(() => {
+                    verificarCambiosEnSegundoPlano();
+                }, 1000);
+            }
+        }
+
+        function verificarCambiosEnSegundoPlano() {
+            const cocinaAntesJSON = ultimaListaCocinaJSON;
+            recargarDatosStorage();
+            const cocinaActualJSON = JSON.stringify(appData.pedidosCocina);
+
+            if (appData.pedidosCocina.length > ultimoConteoCocina) {
+                ultimoConteoCocina = appData.pedidosCocina.length;
+                ultimaListaCocinaJSON = cocinaActualJSON;
+                if (rolActual === 'cocina') {
+                    reproducirSonidoAlerta('urgente');
+                }
+                if (rolActual === 'cocina') renderCocina();
+            } else if (appData.pedidosCocina.length < ultimoConteoCocina) {
+                ultimoConteoCocina = appData.pedidosCocina.length;
+            }
+            ultimaListaCocinaJSON = cocinaActualJSON;
+
+            if (rolActual === 'caja' || rolActual === 'admin') {
+                const parsedAntes = JSON.parse(cocinaAntesJSON);
+                const parsedAhora = appData.pedidosCocina;
+
+                parsedAhora.forEach(nuevoP => {
+                    const antiguoP = parsedAntes.find(p => p.id === nuevoP.id);
+                    if (antiguoP && antiguoP.estado === 'Pendiente' && nuevoP.estado === 'Listo ✅') {
+                        mostrarToastCaja(`El pedido de [${nuevoP.referencia}] ya está listo.`);
+                        reproducirSonidoAlerta('urgente');
+                    }
+                });
+            }
+
+            if (rolActual === 'cocina') renderCocina();
+            renderDeliveries();
         }
 
         function mostrarToastCaja(mensaje) {
@@ -815,6 +755,18 @@
 
         function cerrarToastCaja() {
             document.getElementById('toast-caja-alerta').classList.add('hidden');
+        }
+
+        function recargarDatosStorage() {
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || appData.usuarios;
+            appData.productos = JSON.parse(localStorage.getItem('amazonas_prods')) || appData.productos;
+            appData.mesas = JSON.parse(localStorage.getItem('amazonas_mesas')) || appData.mesas;
+            appData.deliveries = JSON.parse(localStorage.getItem('amazonas_deliveries')) || appData.deliveries;
+            appData.ventas = JSON.parse(localStorage.getItem('amazonas_ventas')) || appData.ventas;
+            appData.gastosCaja = JSON.parse(localStorage.getItem('amazonas_gastos_caja')) || appData.gastosCaja;
+            appData.dineroInicial = parseFloat(localStorage.getItem('amazonas_dinero_inicial')) || 0;
+            appData.pedidosCocina = JSON.parse(localStorage.getItem('amazonas_cocina')) || appData.pedidosCocina;
+            appData.archivoHistorico = JSON.parse(localStorage.getItem('amazonas_archivo_historico')) || appData.archivoHistorico;
         }
 
         function construirMenuLateral() {
@@ -885,20 +837,33 @@
             }
         }
 
-        async function guardarDineroInicial() {
+        function saveData() {
+            localStorage.setItem('amazonas_usuarios', JSON.stringify(appData.usuarios));
+            localStorage.setItem('amazonas_prods', JSON.stringify(appData.productos));
+            localStorage.setItem('amazonas_mesas', JSON.stringify(appData.mesas));
+            localStorage.setItem('amazonas_deliveries', JSON.stringify(appData.deliveries));
+            localStorage.setItem('amazonas_ventas', JSON.stringify(appData.ventas));
+            localStorage.setItem('amazonas_gastos_caja', JSON.stringify(appData.gastosCaja));
+            localStorage.setItem('amazonas_dinero_inicial', appData.dineroInicial);
+            localStorage.setItem('amazonas_cocina', JSON.stringify(appData.pedidosCocina));
+            localStorage.setItem('amazonas_archivo_historico', JSON.stringify(appData.archivoHistorico));
+            actualizarCaja();
+        }
+
+        function guardarDineroInicial() {
             const input = document.getElementById('input-dinero-inicial');
             const valor = parseFloat(input.value);
             if (isNaN(valor) || valor < 0) {
                 alert('Por favor ingrese un monto inicial válido.');
                 return;
             }
-            const { setDoc, doc } = window.FB_SDK;
-            await setDoc(doc(window.db, "configuracion", "caja_global"), { dineroInicial: valor });
+            appData.dineroInicial = valor;
+            saveData();
             input.value = '';
             alert(`¡Dinero inicial fijado en $${valor.toFixed(2)}!`);
         }
 
-        async function registrarGastoCaja(e) {
+        function registrarGastoCaja(e) {
             e.preventDefault();
             const montoInput = document.getElementById('gasto-monto');
             const comInput = document.getElementById('gasto-comentario');
@@ -910,6 +875,7 @@
             }
 
             const nuevoGasto = {
+                id: Date.now(),
                 tipo: 'Gasto',
                 descripcion: comInput.value.trim(),
                 monto: monto,
@@ -917,8 +883,8 @@
                 hora: new Date().toLocaleTimeString()
             };
 
-            const { addDoc, collection } = window.FB_SDK;
-            await addDoc(collection(window.db, "gastosCaja"), nuevoGasto);
+            appData.gastosCaja.push(nuevoGasto);
+            saveData();
 
             montoInput.value = '';
             comInput.value = '';
@@ -926,24 +892,24 @@
         }
 
         function iniciarVentaRapida() {
-            pedidoTemporal = { esVentaRapida: true, idFirebase: null, mesaId: null, items: [], comidaEnviadaACocina: [] };
+            pedidoTemporal = { esVentaRapida: true, mesaId: null, items: [], comidaEnviadaACocina: [] };
             document.getElementById('modal-titulo').innerText = '⚡ Venta Rápida (Al paso)';
             prepararModalPedido();
         }
 
-        async function promptCrearMesa() {
+        function promptCrearMesa() {
             const nombre = prompt('Nombre o número de la nueva mesa (Ej: Mesa 1, Barra):');
             if (nombre) {
-                const nuevaMesa = { nombre: nombre.trim(), items: [], comidaEnviadaACocina: [] };
-                const { addDoc, collection } = window.FB_SDK;
-                await addDoc(collection(window.db, "mesas"), nuevaMesa);
+                const nuevaMesa = { id: Date.now(), nombre: nombre.trim(), items: [] };
+                appData.mesas.push(nuevaMesa);
+                saveData();
+                renderMesas();
             }
         }
 
-        function abrirMesa(idFirebase) {
-            const mesa = appData.mesas.find(m => m.idFirebase === idFirebase);
-            if (!mesa) return;
-            pedidoTemporal = { esVentaRapida: false, idFirebase: mesa.idFirebase, items: [...(mesa.items || [])], comidaEnviadaACocina: mesa.comidaEnviadaACocina || [] };
+        function abrirMesa(id) {
+            const mesa = appData.mesas.find(m => m.id === id);
+            pedidoTemporal = { esVentaRapida: false, mesaId: mesa.id, items: [...mesa.items], comidaEnviadaACocina: mesa.comidaEnviadaACocina || [] };
             document.getElementById('modal-titulo').innerText = `Consumo: ${mesa.nombre}`;
             prepararModalPedido();
         }
@@ -973,7 +939,7 @@
                 contenedorLista.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No se encontraron productos</div>`;
             } else {
                 contenedorLista.innerHTML = coincidentes.map(p => `
-                    <div onclick="seleccionarProductoBuscado('${p.idFirebase}')" class="flex items-center gap-3 p-2 hover:bg-emerald-50 cursor-pointer transition">
+                    <div onclick="seleccionarProductoBuscado(${p.id})" class="flex items-center gap-3 p-2 hover:bg-emerald-50 cursor-pointer transition">
                         <img src="${p.imagen || IMAGEN_DEFECTO}" class="w-10 h-10 object-cover rounded-lg border">
                         <div class="flex-grow">
                             <p class="font-bold text-xs text-gray-800">${p.nombre}</p>
@@ -986,18 +952,18 @@
             contenedorLista.classList.remove('hidden');
         }
 
-        async function seleccionarProductoBuscado(idFirebase) {
+        function seleccionarProductoBuscado(prodId) {
             const cantInput = document.getElementById('input-cant');
             const cant = parseInt(cantInput.value) || 1;
-            const prod = appData.productos.find(p => p.idFirebase === idFirebase);
+            const prod = appData.productos.find(p => p.id === prodId);
             if (!prod) return;
 
-            const existente = pedidoTemporal.items.find(item => item.idFirebase === prod.idFirebase);
+            const existente = pedidoTemporal.items.find(item => item.id === prod.id);
             if (existente) {
                 existente.cant += cant;
             } else {
                 pedidoTemporal.items.push({
-                    idFirebase: prod.idFirebase,
+                    id: prod.id,
                     nombre: prod.nombre,
                     precio: prod.precio,
                     imagen: prod.imagen || IMAGEN_DEFECTO,
@@ -1007,11 +973,11 @@
             }
 
             if (!pedidoTemporal.esVentaRapida) {
-                const { updateDoc, doc } = window.FB_SDK;
-                await updateDoc(doc(window.db, "mesas", pedidoTemporal.idFirebase), {
-                    items: pedidoTemporal.items,
-                    comidaEnviadaACocina: pedidoTemporal.comidaEnviadaACocina
-                });
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                mesa.items = [...pedidoTemporal.items];
+                mesa.comidaEnviadaACocina = [...pedidoTemporal.comidaEnviadaACocina];
+                saveData();
+                renderMesas();
             }
 
             document.getElementById('input-buscar-prod').value = '';
@@ -1058,19 +1024,21 @@
             actualizarEstadoBotonCocina();
         }
 
-        async function actualizarCantidadItem(index, nuevaCantidad) {
+        function actualizarCantidadItem(index, nuevaCantidad) {
             let cant = parseInt(nuevaCantidad);
             if (isNaN(cant) || cant <= 0) {
                 eliminarItemPedido(index);
                 return;
             }
             pedidoTemporal.items[index].cant = cant;
-            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.idFirebase) {
-                const { updateDoc, doc } = window.FB_SDK;
-                await updateDoc(doc(window.db, "mesas", pedidoTemporal.idFirebase), {
-                    items: pedidoTemporal.items,
-                    comidaEnviadaACocina: pedidoTemporal.comidaEnviadaACocina
-                });
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) {
+                    mesa.items = [...pedidoTemporal.items];
+                    mesa.comidaEnviadaACocina = [...pedidoTemporal.comidaEnviadaACocina];
+                    saveData();
+                    renderMesas();
+                }
             }
             renderItemsPedido();
         }
@@ -1079,54 +1047,57 @@
             itemIndexAEditar = index;
             const select = document.getElementById('select-nuevo-producto');
             select.innerHTML = appData.productos.map(p => `
-                <option value="${p.idFirebase}">${p.nombre} - $${p.precio.toFixed(2)}</option>
+                <option value="${p.id}">${p.nombre} - $${p.precio.toFixed(2)}</option>
             `).join('');
             document.getElementById('modal-editar-item').classList.remove('hidden');
         }
 
-        async function confirmarCambioProducto() {
+        function confirmarCambioProducto() {
             if (itemIndexAEditar === null) return;
             const select = document.getElementById('select-nuevo-producto');
-            const nuevoIdFirebase = select.value;
-            const nuevoProd = appData.productos.find(p => p.idFirebase === nuevoIdFirebase);
+            const nuevoProdId = parseInt(select.value);
+            const nuevoProd = appData.productos.find(p => p.id === nuevoProdId);
             if (!nuevoProd) return;
 
-            pedidoTemporal.items[itemIndexAEditar].idFirebase = nuevoProd.idFirebase;
+            pedidoTemporal.items[itemIndexAEditar].id = nuevoProd.id;
             pedidoTemporal.items[itemIndexAEditar].nombre = nuevoProd.nombre;
             pedidoTemporal.items[itemIndexAEditar].precio = nuevoProd.precio;
             pedidoTemporal.items[itemIndexAEditar].imagen = nuevoProd.imagen || IMAGEN_DEFECTO;
             pedidoTemporal.items[itemIndexAEditar].categoria = nuevoProd.categoria;
 
-            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.idFirebase) {
-                const { updateDoc, doc } = window.FB_SDK;
-                await updateDoc(doc(window.db, "mesas", pedidoTemporal.idFirebase), {
-                    items: pedidoTemporal.items,
-                    comidaEnviadaACocina: pedidoTemporal.comidaEnviadaACocina
-                });
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) {
+                    mesa.items = [...pedidoTemporal.items];
+                    mesa.comidaEnviadaACocina = [...pedidoTemporal.comidaEnviadaACocina];
+                    saveData();
+                    renderMesas();
+                }
             }
             cerrarModal('modal-editar-item');
             renderItemsPedido();
         }
 
-        async function eliminarItemPedido(index) {
+        function eliminarItemPedido(index) {
             const itemEliminado = pedidoTemporal.items[index];
             pedidoTemporal.items.splice(index, 1);
             if (itemEliminado) {
-                pedidoTemporal.comidaEnviadaACocina = (pedidoTemporal.comidaEnviadaACocina || []).filter(id => id !== itemEliminado.idFirebase);
+                pedidoTemporal.comidaEnviadaACocina = (pedidoTemporal.comidaEnviadaACocina || []).filter(id => id !== itemEliminado.id);
             }
-            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.idFirebase) {
-                const { updateDoc, doc } = window.FB_SDK;
-                await updateDoc(doc(window.db, "mesas", pedidoTemporal.idFirebase), {
-                    items: pedidoTemporal.items,
-                    comidaEnviadaACocina: pedidoTemporal.comidaEnviadaACocina
-                });
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) {
+                    mesa.items = [...pedidoTemporal.items];
+                    saveData();
+                    renderMesas();
+                }
             }
             renderItemsPedido();
         }
 
-        async function enviarComidaACocina() {
+        function enviarComidaACocina() {
             const comidas = pedidoTemporal.items.filter(item => {
-                const producto = appData.productos.find(p => p.idFirebase === item.idFirebase);
+                const producto = appData.productos.find(p => p.id === item.id);
                 const categoria = (producto?.categoria || item.categoria || '').toLowerCase().trim();
                 return categoria === 'comida' || categoria === 'comidas';
             });
@@ -1137,7 +1108,7 @@
             }
 
             const idsYaEnviados = pedidoTemporal.comidaEnviadaACocina || [];
-            const comidasNuevas = comidas.filter(item => !idsYaEnviados.includes(item.idFirebase));
+            const comidasNuevas = comidas.filter(item => !idsYaEnviados.includes(item.id));
 
             if (comidasNuevas.length === 0) {
                 alert('Los productos de comida de este pedido ya fueron enviados a Cocina.');
@@ -1145,12 +1116,13 @@
             }
 
             let referencia = 'Venta al paso';
-            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.idFirebase) {
-                const mesa = appData.mesas.find(m => m.idFirebase === pedidoTemporal.idFirebase);
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
                 if (mesa) referencia = mesa.nombre;
             }
 
             const pedidoCocina = {
+                id: Date.now(),
                 tipoServicio: pedidoTemporal.esVentaRapida ? 'Venta Rápida' : 'Mesa',
                 referencia: referencia,
                 items: comidasNuevas.map(item => ({ ...item })),
@@ -1159,22 +1131,26 @@
                 hora: new Date().toLocaleTimeString()
             };
 
-            const { addDoc, collection, updateDoc, doc } = window.FB_SDK;
-            await addDoc(collection(window.db, "cocina"), pedidoCocina);
+            appData.pedidosCocina.push(pedidoCocina);
 
             pedidoTemporal.comidaEnviadaACocina = [
                 ...idsYaEnviados,
-                ...comidasNuevas.map(item => item.idFirebase)
+                ...comidasNuevas.map(item => item.id)
             ];
 
-            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.idFirebase) {
-                await updateDoc(doc(window.db, "mesas", pedidoTemporal.idFirebase), {
-                    items: pedidoTemporal.items,
-                    comidaEnviadaACocina: pedidoTemporal.comidaEnviadaACocina
-                });
+            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.mesaId) {
+                const mesa = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
+                if (mesa) {
+                    mesa.items = [...pedidoTemporal.items];
+                    mesa.comidaEnviadaACocina = [...pedidoTemporal.comidaEnviadaACocina];
+                }
             }
 
+            saveData();
+            renderCocina();
+            renderMesas();
             actualizarEstadoBotonCocina();
+
             alert(`¡${comidasNuevas.length} producto(s) de comida enviado(s) a Cocina!`);
         }
 
@@ -1183,13 +1159,13 @@
             if (!boton) return;
 
             const comidas = pedidoTemporal.items.filter(item => {
-                const producto = appData.productos.find(p => p.idFirebase === item.idFirebase);
+                const producto = appData.productos.find(p => p.id === item.id);
                 const categoria = (producto?.categoria || item.categoria || '').toLowerCase().trim();
                 return categoria === 'comida' || categoria === 'comidas';
             });
 
             const enviados = pedidoTemporal.comidaEnviadaACocina || [];
-            const pendientes = comidas.filter(item => !enviados.includes(item.idFirebase));
+            const pendientes = comidas.filter(item => !enviados.includes(item.id));
 
             if (comidas.length === 0) {
                 boton.disabled = true;
@@ -1206,7 +1182,7 @@
             }
         }
 
-        async function enviarADelivery() {
+        function enviarADelivery() {
             const total = pedidoTemporal.items.reduce((sum, item) => sum + (item.precio * item.cant), 0);
             if (total === 0) {
                 alert('El pedido está vacío.');
@@ -1216,9 +1192,8 @@
             const cliente = prompt('Nombre del cliente o dirección para el envío:', 'Cliente General');
             if (!cliente) return;
 
-            const { addDoc, collection, deleteDoc, doc } = window.FB_SDK;
-
-            await addDoc(collection(window.db, "deliveries"), {
+            appData.deliveries.push({
+                id: Date.now(),
                 cliente: cliente.trim(),
                 items: [...pedidoTemporal.items],
                 monto: total,
@@ -1227,13 +1202,14 @@
             });
 
             const comidasDelivery = pedidoTemporal.items.filter(item => {
-                const producto = appData.productos.find(p => p.idFirebase === item.idFirebase);
+                const producto = appData.productos.find(p => p.id === item.id);
                 const categoria = (producto?.categoria || item.categoria || '').toLowerCase().trim();
                 return categoria === 'comida' || categoria === 'comidas';
             });
 
             if (comidasDelivery.length > 0) {
-                await addDoc(collection(window.db, "cocina"), {
+                appData.pedidosCocina.push({
+                    id: Date.now(),
                     tipoServicio: 'Delivery',
                     referencia: cliente.trim(),
                     items: comidasDelivery.map(item => ({ ...item })),
@@ -1243,11 +1219,15 @@
                 });
             }
 
-            if (!pedidoTemporal.esVentaRapida && pedidoTemporal.idFirebase) {
-                await deleteDoc(doc(window.db, "mesas", pedidoTemporal.idFirebase));
+            if (!pedidoTemporal.esVentaRapida) {
+                appData.mesas = appData.mesas.filter(m => m.id !== pedidoTemporal.mesaId);
             }
 
+            saveData();
             cerrarModal('modal-pedido');
+            renderMesas();
+            renderDeliveries();
+            renderCocina();
             alert('¡Pedido de delivery enviado a Cocina!');
         }
 
@@ -1261,8 +1241,8 @@
             prepararModalCobroVuelto(total);
         }
 
-        function solicitarCobroDelivery(idFirebase) {
-            deliveryACobrar = appData.deliveries.find(d => d.idFirebase === idFirebase);
+        function solicitarCobroDelivery(id) {
+            deliveryACobrar = appData.deliveries.find(d => d.id === id);
             if (!deliveryACobrar) return;
             prepararModalCobroVuelto(deliveryACobrar.monto);
         }
@@ -1298,7 +1278,7 @@
             }
         }
 
-        async function confirmarCobroFinal(deseaImprimir) {
+        function confirmarCobroFinal(deseaImprimir) {
             let totalMonto = 0;
             if (deliveryACobrar) {
                 totalMonto = deliveryACobrar.monto;
@@ -1313,10 +1293,10 @@
             }
 
             cerrarModal('modal-confirmar-impresion');
-            const { addDoc, collection, deleteDoc, doc } = window.FB_SDK;
 
             if (deliveryACobrar) {
                 const nuevaVenta = {
+                    id: Date.now(),
                     tipo: 'Delivery',
                     descripcion: `Cliente: ${deliveryACobrar.cliente}`,
                     items: [...deliveryACobrar.items],
@@ -1325,8 +1305,10 @@
                     hora: new Date().toLocaleTimeString()
                 };
 
-                await addDoc(collection(window.db, "ventas"), nuevaVenta);
-                await deleteDoc(doc(window.db, "deliveries", deliveryACobrar.idFirebase));
+                appData.ventas.push(nuevaVenta);
+                appData.deliveries = appData.deliveries.filter(d => d.id !== deliveryACobrar.id);
+                saveData();
+                renderDeliveries();
 
                 if (deseaImprimir) imprimirTicketFactura(nuevaVenta);
                 deliveryACobrar = null;
@@ -1337,11 +1319,12 @@
                 let descripcionVenta = 'Venta al paso';
                 
                 if (!pedidoTemporal.esVentaRapida) {
-                    const mesaObj = appData.mesas.find(m => m.idFirebase === pedidoTemporal.idFirebase);
+                    const mesaObj = appData.mesas.find(m => m.id === pedidoTemporal.mesaId);
                     if (mesaObj) descripcionVenta = mesaObj.nombre;
                 }
 
                 const nuevaVenta = {
+                    id: Date.now(),
                     tipo: tipoServicio,
                     descripcion: descripcionVenta,
                     items: [...pedidoTemporal.items],
@@ -1350,19 +1333,24 @@
                     hora: new Date().toLocaleTimeString()
                 };
 
-                await addDoc(collection(window.db, "ventas"), nuevaVenta);
+                appData.ventas.push(nuevaVenta);
 
-                if (!pedidoTemporal.esVentaRapida && pedidoTemporal.idFirebase) {
-                    await deleteDoc(doc(window.db, "mesas", pedidoTemporal.idFirebase));
+                if (!pedidoTemporal.esVentaRapida) {
+                    appData.mesas = appData.mesas.filter(m => m.id !== pedidoTemporal.mesaId);
                 }
 
+                saveData();
                 cerrarModal('modal-pedido');
+                renderMesas();
+                renderCocina();
+
                 if (deseaImprimir) imprimirTicketFactura(nuevaVenta);
                 alert(`¡Venta cobrada con éxito! (Total: $${total.toFixed(2)} | Vuelto: $${(pagaCon - total).toFixed(2)})`);
             }
         }
 
         function renderCocina() {
+            recargarDatosStorage();
             const grid = document.getElementById('grid-cocina-pedidos');
             const contador = document.getElementById('cocina-contador-pendientes');
             if (!grid) return;
@@ -1415,11 +1403,11 @@
 
                         <div class="border-t pt-3">
                             ${esPendiente ? `
-                                <button onclick="marcarPedidoListo('${p.idFirebase}')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition">
+                                <button onclick="marcarPedidoListo(${p.id})" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition">
                                     <i class="fa-solid fa-check-double text-sm"></i> Marcar como LISTO (Avisar a Caja)
                                 </button>
                             ` : `
-                                <button onclick="eliminarPedidoCocina('${p.idFirebase}')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 transition">
+                                <button onclick="eliminarPedidoCocina(${p.id})" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 transition">
                                     <i class="fa-solid fa-trash"></i> Quitar del Monitor
                                 </button>
                             `}
@@ -1429,14 +1417,19 @@
             }).join('');
         }
 
-        async function marcarPedidoListo(idFirebase) {
-            const { updateDoc, doc } = window.FB_SDK;
-            await updateDoc(doc(window.db, "cocina", idFirebase), { estado: 'Listo ✅' });
+        function marcarPedidoListo(id) {
+            const pedido = appData.pedidosCocina.find(p => p.id === id);
+            if (pedido) {
+                pedido.estado = 'Listo ✅';
+                saveData();
+                renderCocina();
+            }
         }
 
-        async function eliminarPedidoCocina(idFirebase) {
-            const { deleteDoc, doc } = window.FB_SDK;
-            await deleteDoc(doc(window.db, "cocina", idFirebase));
+        function eliminarPedidoCocina(id) {
+            appData.pedidosCocina = appData.pedidosCocina.filter(p => p.id !== id);
+            saveData();
+            renderCocina();
         }
 
         function imprimirTicketFactura(venta) {
@@ -1501,6 +1494,7 @@
             imprimirReporteCierreDia();
 
             const resumenJornada = {
+                id: Date.now(),
                 fecha: new Date().toLocaleDateString(),
                 horaCierre: new Date().toLocaleTimeString(),
                 administradorCierre: cajeroActual,
@@ -1511,22 +1505,13 @@
                 gastos: [...appData.gastosCaja]
             };
 
-            const { addDoc, collection, getDocs, deleteDoc, doc, setDoc } = window.FB_SDK;
-            const db = window.db;
+            appData.archivoHistorico.push(resumenJornada);
 
-            await addDoc(collection(db, "archivoHistorico"), resumenJornada);
-
-            // Borrar transacciones del día actual en Firestore
-            for (let v of appData.ventas) {
-                await deleteDoc(doc(db, "ventas", v.idFirebase));
-            }
-            for (let g of appData.gastosCaja) {
-                await deleteDoc(doc(db, "gastosCaja", g.idFirebase));
-            }
-            for (let c of appData.pedidosCocina) {
-                await deleteDoc(doc(db, "cocina", c.idFirebase));
-            }
-            await setDoc(doc(db, "configuracion", "caja_global"), { dineroInicial: 0 });
+            appData.ventas = [];
+            appData.gastosCaja = [];
+            appData.dineroInicial = 0;
+            appData.pedidosCocina = [];
+            saveData();
 
             alert('¡Cierre de día completado con éxito! Se imprimió el reporte y la información quedó respaldada en el archivo exclusivo para Administradores.');
             location.reload();
@@ -1582,16 +1567,16 @@
             }
 
             appData.mesas.forEach(mesa => {
-                const total = (mesa.items || []).reduce((sum, i) => sum + (i.precio * i.cant), 0);
+                const total = mesa.items.reduce((sum, i) => sum + (i.precio * i.cant), 0);
                 const card = document.createElement('div');
                 card.className = "bg-white p-4 rounded-2xl shadow border-2 border-emerald-400 cursor-pointer hover:shadow-md transition";
-                card.onclick = () => abrirMesa(mesa.idFirebase);
+                card.onclick = () => abrirMesa(mesa.id);
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-1">
                         <span class="font-bold text-gray-900">${mesa.nombre}</span>
                         <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Abierta</span>
                     </div>
-                    <p class="text-xs text-gray-500">${(mesa.items || []).length} ítems</p>
+                    <p class="text-xs text-gray-500">${mesa.items.length} ítems</p>
                     <p class="text-xl font-black text-emerald-700 mt-2">$${total.toFixed(2)}</p>
                 `;
                 grid.appendChild(card);
@@ -1647,7 +1632,7 @@
                             <span class="text-xs text-gray-400">Total:</span>
                             <span class="text-lg text-emerald-600">$${del.monto.toFixed(2)}</span>
                         </div>
-                        <button onclick="solicitarCobroDelivery('${del.idFirebase}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 shadow">
+                        <button onclick="solicitarCobroDelivery(${del.id})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 shadow">
                             <i class="fa-solid fa-check"></i> Cobrar y Entregar
                         </button>
                     </div>
@@ -1722,6 +1707,7 @@
         }
 
         function renderUsuariosAdmin() {
+            recargarDatosStorage();
             const tbody = document.getElementById('tabla-usuarios-admin');
             if (!tbody) return;
 
@@ -1766,7 +1752,7 @@
                 return;
             }
 
-            contenedor.innerHTML = appData.archivoHistorico.map((h) => `
+            contenedor.innerHTML = appData.archivoHistorico.map((h, i) => `
                 <div class="bg-gray-50 border p-4 rounded-xl space-y-2">
                     <div class="flex justify-between items-center border-b pb-2">
                         <div>
@@ -1787,18 +1773,16 @@
             `).join('');
         }
 
-        async function limpiarArchivoHistorico() {
+        function limpiarArchivoHistorico() {
             if (confirm('¿Desea vaciar el archivo histórico de cierres? Esta acción no se puede deshacer.')) {
-                const { getDocs, collection, deleteDoc, doc } = window.FB_SDK;
-                const snap = await getDocs(collection(window.db, "archivoHistorico"));
-                for (let d of snap.docs) {
-                    await deleteDoc(doc(window.db, "archivoHistorico", d.id));
-                }
+                appData.archivoHistorico = [];
+                saveData();
+                renderArchivoHistoricoAdmin();
             }
         }
 
         function abrirModalUsuarioAdmin() {
-            document.getElementById('usuario-id-editar').value = '';
+            document.getElementById('usuario-idx-editar').value = '';
             document.getElementById('admin-user-nombre').value = '';
             document.getElementById('admin-user-pass').value = '';
             document.getElementById('admin-user-rol').value = 'caja';
@@ -1809,7 +1793,7 @@
         function abrirEditarUsuarioAdmin(idx) {
             const u = appData.usuarios[idx];
             if (!u) return;
-            document.getElementById('usuario-id-editar').value = u.idFirebase;
+            document.getElementById('usuario-idx-editar').value = idx;
             document.getElementById('admin-user-nombre').value = u.usuario;
             document.getElementById('admin-user-pass').value = u.password;
             document.getElementById('admin-user-rol').value = u.rol;
@@ -1817,43 +1801,50 @@
             document.getElementById('modal-usuario-admin').classList.remove('hidden');
         }
 
-        async function guardarUsuarioAdmin(e) {
+        function guardarUsuarioAdmin(e) {
             e.preventDefault();
-            const idFirebase = document.getElementById('usuario-id-editar').value;
+            const idxStr = document.getElementById('usuario-idx-editar').value;
             const nombre = document.getElementById('admin-user-nombre').value.trim();
             const pass = document.getElementById('admin-user-pass').value.trim();
             const rol = document.getElementById('admin-user-rol').value;
 
-            const { setDoc, doc } = window.FB_SDK;
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || [];
 
-            if (idFirebase) {
-                await setDoc(doc(window.db, "usuarios", idFirebase), { usuario: nombre, password: pass, rol: rol });
+            if (idxStr !== '') {
+                const idx = parseInt(idxStr);
+                appData.usuarios[idx].usuario = nombre;
+                appData.usuarios[idx].password = pass;
+                appData.usuarios[idx].rol = rol;
             } else {
                 const existe = appData.usuarios.find(u => u.usuario.toLowerCase() === nombre.toLowerCase());
                 if (existe) {
                     alert('Ya existe un usuario con este nombre.');
                     return;
                 }
-                await setDoc(doc(window.db, "usuarios", nombre), { usuario: nombre, password: pass, rol: rol });
+                appData.usuarios.push({ usuario: nombre, password: pass, rol: rol });
             }
 
+            saveData();
             cerrarModal('modal-usuario-admin');
+            renderUsuariosAdmin();
             alert('¡Usuario guardado correctamente!');
         }
 
-        async function eliminarUsuarioAdmin(idx) {
+        function eliminarUsuarioAdmin(idx) {
+            appData.usuarios = JSON.parse(localStorage.getItem('amazonas_usuarios')) || [];
             if (appData.usuarios.length <= 1) {
                 alert('No puedes eliminar el único usuario restante del sistema.');
                 return;
             }
-            const u = appData.usuarios[idx];
-            if (confirm(`¿Seguro que deseas eliminar al usuario "${u.usuario}"?`)) {
-                const { deleteDoc, doc } = window.FB_SDK;
-                await deleteDoc(doc(window.db, "usuarios", u.idFirebase));
+            if (confirm(`¿Seguro que deseas eliminar al usuario "${appData.usuarios[idx].usuario}"?`)) {
+                appData.usuarios.splice(idx, 1);
+                saveData();
+                renderUsuariosAdmin();
             }
         }
 
         function renderProductos() {
+            recargarDatosStorage();
             const tbody = document.getElementById('tabla-productos');
             if (!tbody) return;
             if (appData.productos.length === 0) {
@@ -1861,14 +1852,49 @@
                 return;
             }
             tbody.innerHTML = appData.productos.map(p => `
-                <tr onclick="editarProductoCatalogo('${p.idFirebase}')" class="hover:bg-emerald-50 cursor-pointer transition border-b">
-                    <td class="p-3"><img src="${p.imagen || IMAGEN_DEFECTO}" class="w-10 h-10 object-cover rounded-xl border"></td>
-                    <td class="p-3 font-bold text-gray-800">${p.nombre}</td>
-                    <td class="p-3"><span class="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full text-xs font-semibold">${p.categoria}</span></td>
-                    <td class="p-3 text-right font-black text-emerald-600">$${p.precio.toFixed(2)}</td>
-                    <td class="p-3 text-center text-xs text-gray-400"><i class="fa-solid fa-pen"></i> Toca para editar</td>
+                <tr onclick="editarProductoCatalogo(${p.id})" class="hover:bg-emerald-50 cursor-pointer transition border-b">
+                    <td class="p-3"><img src="${p.imagen || IMAGEN_DEFECTO}" class="w-10 h-10 object-cover rounded-lg border"></td>
+                    <td class="p-3 font-semibold text-gray-800">${p.nombre}</td>
+                    <td class="p-3 text-gray-500">${p.categoria}</td>
+                    <td class="p-3 text-right font-bold text-emerald-600">$${p.precio.toFixed(2)}</td>
+                    <td class="p-3 text-center" onclick="event.stopPropagation()">
+                        <button onclick="eliminarProductoDelCatalogo(${p.id})" class="bg-red-50 text-red-700 px-3 py-1.5 rounded-xl font-bold text-xs">Eliminar</button>
+                    </td>
                 </tr>
             `).join('');
+        }
+
+        function editarProductoCatalogo(id) {
+            const prod = appData.productos.find(p => p.id === id);
+            if (!prod) return;
+            document.getElementById('prod-id-editar').value = prod.id;
+            document.getElementById('prod-nombre').value = prod.nombre;
+            document.getElementById('prod-categoria').value = prod.categoria;
+            document.getElementById('prod-precio').value = prod.precio;
+            document.getElementById('modal-producto-titulo').innerText = 'Editar Producto';
+            document.getElementById('modal-producto').classList.remove('hidden');
+        }
+
+        function eliminarProductoDelCatalogo(id) {
+            if (confirm('¿Eliminar producto?')) {
+                appData.productos = appData.productos.filter(p => p.id !== id);
+                saveData();
+                renderProductos();
+            }
+        }
+
+        function abrirModalQuitarProducto() {
+            const select = document.getElementById('select-quitar-producto');
+            select.innerHTML = appData.productos.map(p => `<option value="${p.id}">${p.nombre} - $${p.precio}</option>`).join('');
+            document.getElementById('modal-quitar-producto').classList.remove('hidden');
+        }
+
+        function confirmarQuitarProductoModal() {
+            const id = parseInt(document.getElementById('select-quitar-producto').value);
+            appData.productos = appData.productos.filter(p => p.id !== id);
+            saveData();
+            renderProductos();
+            cerrarModal('modal-quitar-producto');
         }
 
         function abrirModalProducto() {
@@ -1876,68 +1902,63 @@
             document.getElementById('prod-nombre').value = '';
             document.getElementById('prod-categoria').value = '';
             document.getElementById('prod-precio').value = '';
-            document.getElementById('prod-url-foto').value = '';
             document.getElementById('modal-producto-titulo').innerText = 'Crear Producto';
             document.getElementById('modal-producto').classList.remove('hidden');
         }
 
-        function editarProductoCatalogo(idFirebase) {
-            const p = appData.productos.find(prod => prod.idFirebase === idFirebase);
-            if (!p) return;
-            document.getElementById('prod-id-editar').value = p.idFirebase;
-            document.getElementById('prod-nombre').value = p.nombre;
-            document.getElementById('prod-categoria').value = p.categoria;
-            document.getElementById('prod-precio').value = p.precio;
-            document.getElementById('prod-url-foto').value = p.imagen || '';
-            document.getElementById('modal-producto-titulo').innerText = 'Editar Producto';
-            document.getElementById('modal-producto').classList.remove('hidden');
-        }
-
-        async function guardarProducto(e) {
+        function guardarProducto(e) {
             e.preventDefault();
-            const idFirebase = document.getElementById('prod-id-editar').value;
+            const idEdit = document.getElementById('prod-id-editar').value;
             const nombre = document.getElementById('prod-nombre').value.trim();
             const categoria = document.getElementById('prod-categoria').value.trim();
             const precio = parseFloat(document.getElementById('prod-precio').value);
-            let imagen = document.getElementById('prod-url-foto').value.trim();
-            if (!imagen) imagen = IMAGEN_DEFECTO;
+            const archivoInput = document.getElementById('prod-archivo-foto');
 
-            const { addDoc, setDoc, doc, collection } = window.FB_SDK;
-
-            if (idFirebase) {
-                await setDoc(doc(window.db, "productos", idFirebase), { nombre, categoria, precio, imagen });
-            } else {
-                await addDoc(collection(window.db, "productos"), { nombre, categoria, precio, imagen });
+            let imagenFinal = IMAGEN_DEFECTO;
+            if (idEdit !== '') {
+                const pExistente = appData.productos.find(p => p.id == idEdit);
+                if (pExistente) imagenFinal = pExistente.imagen;
             }
 
-            cerrarModal('modal-producto');
-            alert('¡Producto guardado en la nube correctamente!');
-        }
-
-        function abrirModalQuitarProducto() {
-            const select = document.getElementById('select-quitar-producto');
-            select.innerHTML = appData.productos.map(p => `
-                <option value="${p.idFirebase}">${p.nombre} (${p.categoria}) - $${p.precio.toFixed(2)}</option>
-            `).join('');
-            document.getElementById('modal-quitar-producto').classList.remove('hidden');
-        }
-
-        async function confirmarQuitarProductoModal() {
-            const select = document.getElementById('select-quitar-producto');
-            const idFirebase = select.value;
-            if (!idFirebase) return;
-
-            if (confirm('¿Seguro que deseas eliminar este producto del menú?')) {
-                const { deleteDoc, doc } = window.FB_SDK;
-                await deleteDoc(doc(window.db, "productos", idFirebase));
-                cerrarModal('modal-quitar-producto');
+            const procesarGuardadoFinal = (urlImagen) => {
+                if (idEdit !== '') {
+                    const idNum = parseInt(idEdit);
+                    const prod = appData.productos.find(p => p.id === idNum);
+                    if (prod) {
+                        prod.nombre = nombre;
+                        prod.categoria = categoria;
+                        prod.precio = precio;
+                        prod.imagen = urlImagen;
+                    }
+                } else {
+                    const nuevoProd = {
+                        id: Date.now(),
+                        nombre: nombre,
+                        categoria: categoria,
+                        precio: precio,
+                        imagen: urlImagen
+                    };
+                    appData.productos.push(nuevoProd);
+                }
+                saveData();
+                cerrarModal('modal-producto');
                 renderProductos();
-                alert('¡Producto eliminado del catálogo!');
+                alert('¡Producto guardado en el catálogo!');
+            };
+
+            if (archivoInput.files && archivoInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(uploadEvent) {
+                    procesarGuardadoFinal(uploadEvent.target.result);
+                };
+                reader.readAsDataURL(archivoInput.files[0]);
+            } else {
+                procesarGuardadoFinal(imagenFinal);
             }
         }
 
-        function cerrarModal(id) {
-            document.getElementById(id).classList.add('hidden');
+        function cerrarModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
         }
     </script>
 </body>
