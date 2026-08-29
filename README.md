@@ -1,2 +1,3 @@
 # El-Amazonas
-aplicacion para administrar mi negocio
+Actualmente estamos en mantenimiento.
+gracias por su paciencia
